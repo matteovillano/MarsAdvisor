@@ -10,6 +10,10 @@ Content-Type: application/json
 
 //////////////////GET
 GET http://localhost:8001/api
+
+
+
+GET http://localhost:8001/api
 Content-Type: application/json
 
 {
