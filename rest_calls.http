@@ -1,0 +1,103 @@
+///////////////////POST
+POST http://localhost:8001/api/apod
+Content-Type: application/json
+
+{
+    "date": "2021-03-22"
+}
+###
+
+
+//////////////////GET
+GET http://localhost:8001/api
+Content-Type: application/json
+
+{
+    "id": "6091122afaf6e2529cc8b2b1",
+    "select": {
+        "title": "1"
+    }
+}
+###
+
+GET http://localhost:8001/api
+Content-Type: application/json
+
+{   
+    "find":{
+
+    },
+    "limit": "",
+    "sort": {
+        "title": "-1"
+    },
+    "select": {
+        "title": "1",
+        "copyright": "1"
+    }
+}
+###
+
+
+////////////////////PUT
+PUT http://localhost:8001/api
+Content-Type: application/json
+
+{
+    "id": "60902767bf077a3e0812d644",
+    "comment": "mo sii"
+}
+###
+
+PUT http://localhost:8001/api/one
+Content-Type: application/json
+
+{
+    "filter": {
+        "_id": "60902767bf077a3e0812d644"
+    },
+    "comment": "vaii"
+    
+}
+###
+
+PUT http://localhost:8001/api/many
+Content-Type: application/json
+
+{
+    "filter": {
+
+    },
+    "update": {
+
+    }
+}
+###
+
+//////////////////////DELETE
+DELETE http://localhost:8001/api
+Content-Type: application/json
+
+{
+    "id": ""
+}
+###
+
+DELETE http://localhost:8001/api/one
+Content-Type: application/json
+
+{
+    "filter": {
+
+    }
+}
+###
+
+DELETE http://localhost:8001/api/many
+Content-Type: application/json
+
+{   
+    "filter": {
+        
+    }
+}
