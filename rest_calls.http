@@ -49,7 +49,7 @@ Content-Type: application/json
 
 {
     "id": "60902767bf077a3e0812d644",
-    "comment": "mo sii"
+    "comment": "esempio"
 }
 ###
 
@@ -60,7 +60,7 @@ Content-Type: application/json
     "filter": {
         "_id": "60902767bf077a3e0812d644"
     },
-    "comment": "vaii"
+    "comment": "prova"
     
 }
 ###
@@ -72,9 +72,7 @@ Content-Type: application/json
     "filter": {
 
     },
-    "update": {
-
-    }
+    "comment": ""
 }
 ###
 
