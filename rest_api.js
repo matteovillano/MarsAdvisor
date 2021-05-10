@@ -5,12 +5,42 @@ const mongoose=require('mongoose');
 const axios=require('axios');
 const dotenv=require('dotenv');
 
+//////////////
+var path = require('path');
+var request = require('request');
+const websocket=require('ws');
+const { callNasaImageAPI, callMarsAPIs, getBinary , uploadImage} = require("./functions/api-calls");
+const { requireAuth, checkUser } = require('./middleware/authMiddleware');
+const cookieParser = require('cookie-parser');
+
+
 const app=express();
 dotenv.config();
 
+app.use(express.static(__dirname + '/static'));
+app.set('view engine', 'ejs');
 
+// previene il caching di tutti gli utenti non loggati una volta che viene cambiata la pagina(si ricorda comunque dell'utente se rimane loggato), questo per evitare il problema del back button del browser dopo il logout (facendo back button dopo il logout rimaneva in cache la pagina dello user)
+app.use(function(req, res, next) {
+    if (!req.user)
+        res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+    next();
+  });
+
+var wss=new websocket.Server({port: 8002});
+
+//VARIABILI GLOBALI
+let url_to_save='';
+let access_token = '';
+let binary_media = '';
+let upload_token = '';
 //import thing from dotenv
 const nasa_api_key=process.env.NASA_API_KEY;
+const api_key = process.env.NASA_API_KEY;
+const client_id = process.env.OAUTH_CLIENT;
+const secret = process.env.OAUTH_SECRET;
+
+
 
 //these two methods are for read HTTP requests body
 app.use(express.urlencoded({
@@ -35,6 +65,169 @@ const itemSchema=new mongoose.Schema({
 
 //model
 const Item=mongoose.model('Item',itemSchema);
+
+const authRoutes = require('./routes/authRoutes');  // carica e rende globali nell'app le route di authRoutes così che possa essere utilizzato
+app.use(authRoutes);
+
+/**********************************COOKIES**********************************/
+app.use(cookieParser());
+
+
+/////////////////////////////////////////////////////////////////////////////
+app.get('*', checkUser);  //utilizza su tutte le location il middleware checkUser per verificare se c'è un token dell'user ed è verificato, così da poter vedere i suoi dati dinamicamente (se ce ne sono)
+app.get('/user', requireAuth, (req, res) => res.render('user'));   //pagina dell'utente loggato (eseguie prima la funzione middleware requireAuth per verificare se l'utente è loggato)
+app.get('/', function(req, res) {
+
+    const resp = callNasaImageAPI();  //chiamo funzione generica 
+    resp.then(async (response) => {
+        if (response.error){
+            res.render('errore', {error: "Errore durante la chiamata API Apod"});  //gestire schermata di errore generica
+        }
+        else{
+            const data = response.res.data;
+            let url = data.media_type == 'video' ? data.thumbnail_url : data.url;  // differenzio video e foto
+            let is_video = false;
+            if (data.media_type == 'video' && typeof(url) == 'undefined'){  // caso in cui non c'è una url per un'immagine
+                url = data.url;
+                is_video = true;  // la risorsa è solo video
+            }
+            res.render('index', { url: url , title:data.title, description:data.explanation , copyright:typeof(data.copyright) != 'undefined' ? data.copyright : ' - ', date: data.date, video: is_video});
+            binary_media = await getBinary(url);
+        }
+    }).catch((error) => {
+        console.error(error);
+        res.render('errore', {error: "Errore durante la chiamata API Apod"});
+    })
+
+    
+});
+
+app.post('/', function(req, res) {
+    if (req.body['apod-day']){
+        const data = req.body['apod-day'];
+        const resp = callNasaImageAPI(data);  //chiamo funzione generica 
+        resp.then(async (response) => {
+            if (response.error){
+                res.render('errore', {error: "Errore durante la chiamata API Apod"});  //gestire schermata di errore generica
+            }
+            else{
+                const data = response.res.data;
+                let url = data.media_type == 'video' ? data.thumbnail_url : data.url;  // differenzio video e foto
+                let is_video = false;
+                if (data.media_type == 'video' && typeof(url) == 'undefined'){
+                    url = data.url;
+                    is_video = true;  // risorsa solo video
+                }
+                res.render('index', { url: url , title:data.title, description:data.explanation , copyright:typeof(data.copyright) != 'undefined' ? data.copyright : ' - ', date: data.date, video: is_video});
+                binary_media = await getBinary(url);
+            }
+        }).catch((error) => {
+            console.error(error);
+            res.render('errore', {error: "Errore durante la chiamata API Apod"});
+        })
+    }
+    else{
+        res.render('errore', {error: "Errore durante la richiesta POST, nessuna data è stata passata"}); // gestire errore
+    }
+});
+
+app.post('/google_oauth', function (req, res){  //post per il salvataggio su g. foto, inizio procedura oAuth
+    if(req.body.url_img){
+        url_to_save = req.body.url_img;
+        const google_params = new URLSearchParams({
+            'client_id': client_id,
+            'redirect_uri': 'http://localhost:8001/save_image/',
+            'response_type': 'code',
+            'scope': 'https://www.googleapis.com/auth/photoslibrary.appendonly',  //solo salvataggio, niente lettura
+            'access_type': 'online',
+            'state': 'rdc_project'
+        });
+        res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${google_params}`);
+    }
+})
+
+app.get('/save_image', async function (req, res) { //procedura di invio authorization code
+    const code = req.query.code;
+    const upload_params = new URLSearchParams({
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        'client_id': client_id,
+        'client_secret': secret,
+        'code': code,
+        'redirect_uri': 'http://localhost:8001/save_image/',
+        'grant_type': 'authorization_code'
+    });
+    if (code) {
+        try{
+            const google_response = await axios.post('https://oauth2.googleapis.com/token', upload_params);
+            if(google_response.status == 200){
+                access_token = google_response.data.access_token;  //salvo token per accedere al servizio
+                uploadImage (binary_media, access_token);  //funzione che salva l'immagine su google photo dandogli l'immagine e un token di accesso di google oauth
+                res.redirect('/');  // ridireziona sull'homepage senza aspettare che uploadImage venga terminata
+            }
+            else{
+                res.render('errore', {error: "Errore durante la procedura oAuth"}); // gestire errore
+            }
+        } catch (error) {
+            console.log(error);
+            res.send('errore google_response');
+        }
+    }
+})
+
+app.get('/mars', function(req, res) {
+    let call = callMarsAPIs();
+    call.then((response) => {
+        if(response.error){
+            res.render('errore', {error: "Errore durante la chiamata API Mars Photos"});
+        }
+        else{
+            let body, body1;
+            body1 = response.ob_0;
+            body = response.ob_1;
+            //console.log('RESPONSE', response);
+            res.render('mars', 
+            { url: body1.img_src , sol: body1.sol
+            , date: body1.earth_date, season: body.Season, temp: body['PRE'],
+            ns: body.Northern_season, ss:body.Southern_season, name:body1.rover.name
+            });
+        }
+    }).catch((error) => {
+        console.error(error);
+        res.render('errore', {error: "Errore durante la chiamata API Mars Photos"});
+    })
+});
+
+app.post('/mars', function(req, res) {
+    //console.log(req.body);
+    if(req.body['sonda']){
+        const sonda = req.body['sonda'];
+        let call = callMarsAPIs(sonda);
+        call.then((response) => {
+            if(response.error){
+                res.render('errore', {error: "Errore durante la chiamata API Mars Photos"});
+            }
+            else{
+                let body, body1;
+                body1 = response.ob_0;
+                body = response.ob_1;
+                res.render('mars', 
+                { url: body1.img_src , sol: body1.sol
+                , date: body1.earth_date, season: body.Season, temp: body['PRE'],
+                ns: body.Northern_season, ss:body.Southern_season, name:body1.rover.name
+                });
+            }
+        }).catch((error) => {
+            console.error(error);
+            res.render('errore', {error: "Errore durante la chiamata API Mars Photos"});
+        })
+    }
+    else {
+        res.render('errore', {error: "Errore durante la richiesta POST, nessuna sonda è stata passata"});
+    }
+    
+})
 
 
 

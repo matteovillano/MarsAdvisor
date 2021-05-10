@@ -1,0 +1,56 @@
+<%- include('partials/header'); -%>
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-md-12"><h1>Login</h1></div>
+        <div class="col-md-12">
+          <div class="row wrapper">
+            <div id="formContent">
+
+              <form id="log-form" method="POST" >
+                <div class="form-group col-6" style="display: block;margin:0 auto">
+                  <input type="text" id="username" name="username" placeholder="username" class="form-control mb-1" required>
+                  <input type="password" id="password" name="password" placeholder="password" class="form-control mb-1" required>
+                  <input type="submit" class="btn btn-primary mt-3" value="Login">
+                </div>
+              </form>
+
+              <div>
+                <a href="#">Password dimenticata? (non funziona ancora la funzione)</a>
+              </div>
+              <div>
+                <a href="/signup">Crea un nuovo account</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('log-form')
+        form.addEventListener('submit', login)
+        async function login(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value
+            const password = document.getElementById('password').value
+            const result = await fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username,
+                    password
+                })
+            }).then((res) => res.json())
+
+            if (result.status === 'ok') {
+                alert('Connesso correttamente!')
+                localStorage.setItem('token', result.data)
+                location.assign('/user')
+            } else {
+                alert(result.error)
+            }
+        }
+    </script>
+<%- include('partials/footer'); -%>

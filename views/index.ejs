@@ -1,0 +1,63 @@
+<%- include('partials/header'); -%>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+    <div class="navbar-nav">
+      <a class="nav-item nav-link active" href="/">Home</span></a>
+      <a class="nav-item nav-link" href="/mars">Marte</a>
+      <% if (locals.user) { %>
+      <a class="nav-item nav-link" href="/user"><%- locals.user.username -%></a>
+      <a class="nav-item nav-link" href="/logout">Logout</a>
+      <% } else { %>
+      <a class="nav-item nav-link" href="/login">Login</a>
+      <a class="nav-item nav-link" href="/signup">Sign Up</a>
+      <% } %>
+    </div>
+  </div>
+</nav>
+    <div class="container-fluid" >
+        <div class="col-12" style="display: flex; flex-direction: column;">
+            <h1 style="margin: 0 auto;">Home Progetto</h1>
+            <h3 style="margin: 0 auto;">Foto del giorno Nasa</h3>
+        </div>
+
+        <div class="col-12 pt-5">
+            <h3 style="margin: 0 auto;"><%= title %></h3>
+              <% if(video){ %>   <!-- CONTROLLO SE IL MEDIA ITEM E' UN VIDEO E NON HA UNA THUMBNAIL IMAGE URL -->
+                <div style="display: flex;">
+                  <iframe
+                    src="<%= url %>">
+                  </iframe>
+                </div>  <!-- FRAME PER VISUALIZZARE VIDEO -->
+              <% } else{ %>  
+                <img src="<%= url %>" alt="" class="img-responsive rounded mx-auto d-block mt-2">
+             <% } %>
+
+            <div class="wrapper row pt-3">
+              <% if(video){ %>   <!-- CONTROLLO SE IL MEDIA ITEM E' UN VIDEO, non può essere salvato su googlr foto -->
+                <form id='no_save' action="" onsubmit="return false;">
+                  <button onclick="no_save();">Salva su Google Photo2</button>
+                </form>
+              <% } else{ %>  
+                <form id='salvaImg' action="/google_oauth" method="POST">
+                  <input type="text" name='url_img' value="<%= url %>" style="display: none;">
+                  <button type="submit">Salva su Google Photo</button>
+                </form>
+             <% } %>              
+
+              <form id='pick_date' action="/" method="POST">
+                <input type="date" id="apod-day" name="apod-day" max="" onchange="button_status();"/>
+                <button type="submit" id='send_date'>Invia Richiesta</button>
+              </form>
+            </div>
+            <button onclick="save_apod()">Salva su Database</button>
+            <div class="mt-2">
+                <h6>Descrizione</h6>
+                <p><%= description %></p>
+                <h6>Data: <%= date %> ,  Copyright:  <%= copyright %></h6>
+            </div>
+        </div>
+    </div>
+<%- include('partials/footer'); -%>

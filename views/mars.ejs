@@ -1,0 +1,65 @@
+<%- include('partials/header'); -%>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+      <div class="navbar-nav">
+        <a class="nav-item nav-link" href="/">Home</span></a>
+        <a class="nav-item nav-link active" href="#">Marte</a>
+        <% if (locals.user) { %>
+        <a class="nav-item nav-link" href="/user"><%- locals.user.username -%></a>
+        <a class="nav-item nav-link" href="/logout">Logout</a>
+        <% } else { %>
+        <a class="nav-item nav-link" href="/login">Login</a>
+        <a class="nav-item nav-link" href="/signup">Sign Up</a>
+        <% } %>
+      </div>
+    </div>
+</nav>
+
+    <div class="container-fluid" >
+        <div class="col-12" style="display: flex; flex-direction: column;">
+            <h1 style="margin: 0 auto;">Mars</h1>
+            <h3 style="margin: 0 auto;">Ultima foto Sonda <%= name %> e Meteo</h3>
+        </div>
+
+        <div class="col-12 pt-5">
+            <img src="<%= url %>" alt="" class="img-responsive rounded mx-auto d-block">
+
+            <div class=" row col-12 pt-2" style="flex-direction: row;">
+                <h6>Data: <%= date %>   ,  Sol:  <%= sol %></h6>
+                <form method="POST" action="" id='form_sonda'>
+                    <select name="sonda" id="sonda" form="form_sonda">
+                        <option value="curiosity" selected>Curiosity</option>
+                        <option value="perseverance" >Perseverance</option>
+                        <option value="opportunity" >Opportunity</option>
+                        <option value="spirit" >Spirit</option>
+                    </select>
+                    <button type="submit">Invia</button>
+                </form>
+                <button onclick="save_img()">Salva su database<button>
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid">
+        <div class="col-12" style="display: flex; flex-direction: column;">
+            <h1 style="margin: 0 auto;">Mars Weather</h1>
+            <h3 style="margin: 0 auto;">Dati Meteo sonda InSight</h3>
+        </div>
+        <div class="col-12 pt-2">
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item"><b>Season:</b>  <%= season %></li>
+                <li class="list-group-item"><b>Northern_season:</b>  <%= ns %></li>
+                <li class="list-group-item"><b>Southern_season:</b>  <%= ss %></li>
+                <li class="list-group-item"><b>Atmospheric Pressure Sensor</b> </li>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item"><b>Average of samples:</b>  <%= temp['av'] %></li>
+                        <li class="list-group-item"><b>Total number of recorded samples:</b>  <%= temp['ct'] %></li>
+                        <li class="list-group-item"><b>Minimum data sample over the sol:</b>  <%= temp['mn'] %></li>
+                        <li class="list-group-item"><b>Maximum data sample over the sol:</b>  <%= temp['mx'] %></li>
+                    </ul>
+              </ul>
+        </div>
+    </div>
+<%- include('partials/footer'); -%>

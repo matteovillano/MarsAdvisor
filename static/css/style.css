@@ -1,0 +1,42 @@
+body {
+  max-width: 1200px;
+  padding-top:50px;
+  padding-bottom:50px;
+  margin: auto;
+  background: white;
+}
+
+.nav-item {
+  font-size: 25px;
+}
+
+.list-group-item:focus-within + .list-group {
+  display: block;
+}
+
+.list-group > .list-group-item {
+  border-radius: 0;
+  border-width: 1px 0 0 0;
+}
+
+.list-group > .list-group-item:first-child {
+  border-top-width: 0;
+}
+
+.list-group  > .list-group > .list-group-item {
+  padding-left: 2.5rem;
+}
+
+iframe { 
+  width: 500px;  
+  height: 500px;
+  margin-left: auto;  
+  margin-right: auto; 
+ }  
+
+.wrapper {
+  text-align: center;
+  display: block;
+  top: 50%;
+  left: 50%;
+}

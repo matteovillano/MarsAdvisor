@@ -1,0 +1,56 @@
+<%- include('partials/header'); -%>
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-md-12"><h1>Register</h1></div>
+        <div class="col-md-12">
+          <div class="row wrapper">
+            <div id="formContent">
+
+              <form id="reg-form" method="POST">
+                <div class="form-group col-6" style="display: block;margin:0 auto">
+                  <input type="text" class="form-control mb-1" id="username" name="username" placeholder="username" required>
+                  <input type="email" class="form-control mb-1" id="email" name="email" placeholder="email" required>
+                  <input type="password" class="form-control mb-1" id="password" name="password" placeholder="password" required>
+                  <input type="submit" class="btn btn-primary mt-3" value="Registrati">
+                </div>
+              </form>
+          
+              <div>
+                <a href="/login">Hai già un account? Fai il Log In</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+        const form = document.getElementById('reg-form');
+        form.addEventListener('submit', signup);
+        
+        async function signup(event){
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            const result = await fetch('/signup', {
+                method: 'POST',
+                headers: {
+                   'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({
+                    username,
+                    email,
+                    password
+                })
+            }).then((res) => res.json())
+            if (result.status === 'ok') {
+                console.log(result.data);
+                alert('Registrato correttamente!');
+                location.assign('/user');
+            } else {
+                alert(result.error);
+            }
+        }
+    </script>
+<%- include('partials/footer'); -%>
