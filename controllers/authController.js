@@ -10,6 +10,9 @@ const createToken = (id) => {
     expiresIn: maxAge,
   });
 };
+const createApi = () => {
+  return crypto.randomBytes(32).toString("hex");
+};
 
 module.exports.signup_get = (req, res) => {
   res.render("signup");
@@ -21,11 +24,13 @@ module.exports.login_get = (req, res) => {
 
 module.exports.signup_post = async (req, res) => {
   const { username, email, password } = req.body;
+  const api = createApi();
   try {
     const user = await User.create({
       username,
       email,
       password,
+      api,
     });
     console.log("User created successfully: ", user);
     const token = createToken(user._id);

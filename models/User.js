@@ -11,6 +11,10 @@ const userSchema = new mongoose.Schema(
     passwordResetToken: String,
     passwordResetExpires: Date,
     passwordHashed: { type: Boolean, default: false },
+    api: {
+      type: String,
+      required: true,
+    },
   },
   {
     collection: "users",
