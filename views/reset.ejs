@@ -1,0 +1,43 @@
+<%- include('partials/header'); -%>
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-md-12"><h1>Reimposta password</h1></div>
+        <div class="col-md-12">
+          <div class="row wrapper">
+            <div id="formContent">
+
+              <form id="reset-form" method="PATCH" >
+                <div class="form-group col-6" style="display: block;margin:0 auto">
+                  <input type="password" id="password" name="password" placeholder="password" class="form-control mb-1" required>
+                  <input type="submit" class="btn btn-primary mt-3" value="Reimposta password">
+                </div>
+              </form>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+        const form = document.getElementById('reset-form');
+        form.addEventListener('submit', reset);
+        async function reset(event) {
+            event.preventDefault();
+            const password = document.getElementById('password').value
+            const result = await fetch(`${location.pathname}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    password
+                })
+            }).then((res) => res.json());
+            if (result.status !== "ok") {
+                alert('errore');
+            } else {
+              location.assign('/login');
+            }
+        }
+    </script>
+<%- include('partials/footer'); -%>
