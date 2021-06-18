@@ -28,6 +28,8 @@ app.use(function(req, res, next) {
   });
 
 var wss=new websocket.Server({port: 8002});
+const url = "ws://localhost:8002";
+const connection = new websocket(url);
 
 //VARIABILI GLOBALI
 let url_to_save='';
@@ -163,7 +165,10 @@ app.get('/save_image', async function (req, res) { //procedura di invio authoriz
             const google_response = await axios.post('https://oauth2.googleapis.com/token', upload_params);
             if(google_response.status == 200){
                 access_token = google_response.data.access_token;  //salvo token per accedere al servizio
-                uploadImage (binary_media, access_token);  //funzione che salva l'immagine su google photo dandogli l'immagine e un token di accesso di google oauth
+                const upload = await uploadImage (binary_media, access_token);  //funzione che salva l'immagine su google photo dandogli l'immagine e un token di accesso di google oauth
+                console.log(upload.status);
+                const risposta = {staatus: "ko", tipo: "upload"};
+                connection.send(JSON.stringify(risposta));
                 res.redirect('/');  // ridireziona sull'homepage senza aspettare che uploadImage venga terminata
             }
             else{
@@ -183,14 +188,11 @@ app.get('/mars', function(req, res) {
             res.render('errore', {error: "Errore durante la chiamata API Mars Photos"});
         }
         else{
-            let body, body1;
-            body1 = response.ob_0;
-            body = response.ob_1;
-            //console.log('RESPONSE', response);
+            let image;
+            image = response.response;
             res.render('mars', 
-            { url: body1.img_src , sol: body1.sol
-            , date: body1.earth_date, season: body.Season, temp: body['PRE'],
-            ns: body.Northern_season, ss:body.Southern_season, name:body1.rover.name
+            { url: image.img_src , sol: image.sol
+            , date: image.earth_date, name: image.rover.name
             });
         }
     }).catch((error) => {
@@ -200,7 +202,6 @@ app.get('/mars', function(req, res) {
 });
 
 app.post('/mars', function(req, res) {
-    //console.log(req.body);
     if(req.body['sonda']){
         const sonda = req.body['sonda'];
         let call = callMarsAPIs(sonda);
@@ -209,13 +210,12 @@ app.post('/mars', function(req, res) {
                 res.render('errore', {error: "Errore durante la chiamata API Mars Photos"});
             }
             else{
-                let body, body1;
-                body1 = response.ob_0;
-                body = response.ob_1;
+                let image;
+                image = response.response;
+
                 res.render('mars', 
-                { url: body1.img_src , sol: body1.sol
-                , date: body1.earth_date, season: body.Season, temp: body['PRE'],
-                ns: body.Northern_season, ss:body.Southern_season, name:body1.rover.name
+                { url: image.img_src , sol: image.sol
+                , date: image.earth_date, name:image.rover.name
                 });
             }
         }).catch((error) => {
@@ -354,7 +354,7 @@ app.delete('/api/many',async function(req,res){
 
 /************************Server inizialization************************/
 
-mongoose.connect('mongodb://localhost/my_prog',{
+mongoose.connect('mongodb://localhost:27888/',{
         useCreateIndex: true,
         useNewUrlParser: true,
         useUnifiedTopology: true
