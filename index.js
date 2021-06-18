@@ -20,12 +20,15 @@ const app=express();
 dotenv.config();
 
 //variabili globali
+let access_token = '';
+let binary_media = '';
 const database_url=process.env.DATABASE_URL;
 const port=8005;
 const ws_port=8006;
 const nasa_api_key=process.env.NASA_API_KEY;
 const client_id = process.env.OAUTH_CLIENT;
 const secret = process.env.OAUTH_SECRET;
+const redirect_uri = process.env.REDIRECT_URL;
 
 //setto ejs
 app.use(express.static(__dirname + '/static'));
@@ -38,18 +41,6 @@ app.use(function(req, res, next) {
     next();
   });
 
-
-//VARIABILI GLOBALI
-let url_to_save='';
-let access_token = '';
-let binary_media = '';
-let upload_token = '';
-//import thing from dotenv
-const nasa_api_key=process.env.NASA_API_KEY;
-const api_key = process.env.NASA_API_KEY;
-const client_id = process.env.OAUTH_CLIENT;
-const secret = process.env.OAUTH_SECRET;
-const database_url = process.env.DATABASE_URL;
 
 
 
@@ -262,7 +253,7 @@ app.post('/google_oauth', function (req, res){  //post per il salvataggio su g. 
         url_to_save = req.body.url_img;
         const google_params = new URLSearchParams({
             'client_id': client_id,
-            'redirect_uri': 'http://localhost:8001/save_image/',
+            'redirect_uri': redirect_uri,
             'response_type': 'code',
             'scope': 'https://www.googleapis.com/auth/photoslibrary.appendonly',  //solo salvataggio, niente lettura
             'access_type': 'online',
@@ -281,7 +272,7 @@ app.get('/save_image', async function (req, res) { //procedura di invio authoriz
         'client_id': client_id,
         'client_secret': secret,
         'code': code,
-        'redirect_uri': 'http://localhost:8001/save_image/',
+        'redirect_uri': redirect_uri,
         'grant_type': 'authorization_code'
     });
     if (code) {
