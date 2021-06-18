@@ -28,8 +28,6 @@ app.use(function(req, res, next) {
   });
 
 var wss=new websocket.Server({port: 8002});
-const url = "ws://localhost:8002";
-const connection = new websocket(url);
 
 //VARIABILI GLOBALI
 let url_to_save='';
@@ -41,6 +39,7 @@ const nasa_api_key=process.env.NASA_API_KEY;
 const api_key = process.env.NASA_API_KEY;
 const client_id = process.env.OAUTH_CLIENT;
 const secret = process.env.OAUTH_SECRET;
+const database_url = process.env.DATABASE_URL;
 
 
 
@@ -93,8 +92,13 @@ app.get('/', function(req, res) {
                 url = data.url;
                 is_video = true;  // la risorsa è solo video
             }
-            res.render('index', { url: url , title:data.title, description:data.explanation , copyright:typeof(data.copyright) != 'undefined' ? data.copyright : ' - ', date: data.date, video: is_video});
-            binary_media = await getBinary(url);
+            if(req.query.status){
+                res.render('index', { url: url , title:data.title, description:data.explanation , copyright:typeof(data.copyright) != 'undefined' ? data.copyright : ' - ', date: data.date, video: is_video, google_status: "ok"});
+            }else{
+                res.render('index', { url: url , title:data.title, description:data.explanation , copyright:typeof(data.copyright) != 'undefined' ? data.copyright : ' - ', date: data.date, video: is_video, google_status: ""});
+            }
+            
+            binary_media = await getBinary(url); // TODO: gestire la conversione solo se richiesta dall'utente !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         }
     }).catch((error) => {
         console.error(error);
@@ -167,9 +171,7 @@ app.get('/save_image', async function (req, res) { //procedura di invio authoriz
                 access_token = google_response.data.access_token;  //salvo token per accedere al servizio
                 const upload = await uploadImage (binary_media, access_token);  //funzione che salva l'immagine su google photo dandogli l'immagine e un token di accesso di google oauth
                 console.log(upload.status);
-                const risposta = {staatus: "ko", tipo: "upload"};
-                connection.send(JSON.stringify(risposta));
-                res.redirect('/');  // ridireziona sull'homepage senza aspettare che uploadImage venga terminata
+                res.redirect('/?status=ok');  // ridireziona sull'homepage senza aspettare che uploadImage venga terminata
             }
             else{
                 res.render('errore', {error: "Errore durante la procedura oAuth"}); // gestire errore
@@ -354,7 +356,7 @@ app.delete('/api/many',async function(req,res){
 
 /************************Server inizialization************************/
 
-mongoose.connect('mongodb://localhost:27888/',{
+mongoose.connect(database_url,{
         useCreateIndex: true,
         useNewUrlParser: true,
         useUnifiedTopology: true

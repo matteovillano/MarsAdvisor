@@ -1,8 +1,5 @@
-var request = require('request');
-const https = require('https');
 const axios = require('axios');
 require('dotenv').config();
-const { response } = require('express');
 const api_key = process.env.NASA_API_KEY;
 
 async function callNasaImageAPI (date=null) {
@@ -13,8 +10,7 @@ async function callNasaImageAPI (date=null) {
                 date: date,
                 thumbs: true,  
             }
-        });
-        //console.log(response);
+        }); 
         return {error:false, res:response}
     }catch(error){
         console.error(error);
@@ -30,14 +26,13 @@ async function callMarsAPIs(nome_sonda=null) {
                 api_key: api_key
             }
         });
-        const response2 = await axios.get('https://api.nasa.gov/insight_weather/?', {
-            params: {
-                feedtype: 'json', version:'1.0', api_key: api_key
-            }
-        });
-        const key = Object.keys(response2.data)[0];
-        //console.log(key);
-        return {error:false, ob_0:response.data.latest_photos[0], ob_1:response2.data[key]};
+        // const response2 = await axios.get('https://api.nasa.gov/insight_weather/?', {
+        //     params: {
+        //         feedtype: 'json', version:'1.0', api_key: api_key
+        //     }
+        // });
+        // const key = Object.keys(response2.data.validity_checks)[0];
+        return {error:false, response:response.data.latest_photos[0]};
     } catch (error) {
         console.error(error);
         return {error:true}
@@ -69,10 +64,12 @@ async function uploadImage (image, access_token) {
                 'Authorization': `Bearer ${access_token}`
             }
         });
-        console.log(upload_completion_response.data.newMediaItemResults);
+
+        console.log(upload_completion_response.data.newMediaItemResults[0].status);
+        return {status: "ok"}
     } catch (error) {
         console.error(error);
-        return {error:error};
+        return {error:true, status: "ko"};
     }
 }
 async function getBinary(url) {

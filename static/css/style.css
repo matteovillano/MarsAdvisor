@@ -27,16 +27,33 @@ body {
   padding-left: 2.5rem;
 }
 
-iframe { 
+iframe.yt { 
   width: 500px;  
   height: 500px;
   margin-left: auto;  
   margin-right: auto; 
  }  
 
+ .app-button{
+  flex:1;
+  height:100%;
+}
+
 .wrapper {
   text-align: center;
   display: block;
   top: 50%;
   left: 50%;
+}
+
+.flex {
+  flex-direction: row;
+  display: inline-flex;
+  flex-flow: row;
+  flex: 1;
+}
+
+.flex2 {
+  display: flex;
+  justify-content: center;
 }
