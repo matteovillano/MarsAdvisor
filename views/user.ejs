@@ -34,7 +34,7 @@
     <div class="card mt-5">
       <div class="card-body">
         <h5 class="card-title">La tua API KEY</h5>
-        <input type="text" value="ghk9xu5wk9yd" id="api_key" readonly>
+        <input type="text" value="<%- locals.user.api -%>" id="api_key" disabled>
         <button class="btn btn-primary" onclick="copyText()">Copia</button>
       </div>
     </div>

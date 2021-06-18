@@ -1,0 +1,51 @@
+<%- include('partials/header'); -%>
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-md-12"><h1>Inserisci l'email dell'account</h1></div>
+        <div class="col-md-12">
+          <div class="row wrapper">
+            <div id="formContent">
+
+              <form id="forgot-form" method="POST" >
+                <div class="form-group col-6" style="display: block;margin:0 auto">
+                  <input type="email" id="email" name="email" placeholder="email" class="form-control mb-1" required>
+                  <input type="submit" class="btn btn-primary mt-3" value="Invia email">
+                </div>
+              </form>
+
+              <div>
+                <a href="/login">Login</a>
+              </div>
+              <div>
+                <a href="/signup">Signup</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('forgot-form');
+        form.addEventListener('submit', forgot);
+        async function forgot(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value
+            const result = await fetch(`${location.pathname}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    email
+                })
+            }).then((res) => res.json());
+            if (result.status === 'email inviata') {
+                alert(result.status);
+                location.assign('/');
+            } else {
+                alert(result.error);
+            }
+        }
+    </script>
+<%- include('partials/footer'); -%>

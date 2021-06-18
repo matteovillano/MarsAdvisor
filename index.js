@@ -1,22 +1,33 @@
-
 //modules import
 const express=require('express');
 const mongoose=require('mongoose');
 const axios=require('axios');
 const dotenv=require('dotenv');
-
-//////////////
+const swaggerUi=require('swagger-ui-express');
+const swaggerJsDoc=require('swagger-jsdoc');
+const websocket=require('ws');
 var path = require('path');
 var request = require('request');
-const websocket=require('ws');
-const { callNasaImageAPI, callMarsAPIs, getBinary , uploadImage} = require("./functions/api-calls");
-const { requireAuth, checkUser } = require('./middleware/authMiddleware');
 const cookieParser = require('cookie-parser');
 
+const { geoCoding, starChart, positionBody , positions, bodies, moon} = require("./static/js/rest_calls");
+const { callNasaImageAPI, callMarsAPIs, getBinary , uploadImage} = require("./functions/api-calls");
+const { requireAuth, checkUser } = require('./middleware/authMiddleware');
 
+
+//operazioni di configurazione dei moduli
 const app=express();
 dotenv.config();
 
+//variabili globali
+const database_url=process.env.DATABASE_URL;
+const port=8005;
+const ws_port=8006;
+const nasa_api_key=process.env.NASA_API_KEY;
+const client_id = process.env.OAUTH_CLIENT;
+const secret = process.env.OAUTH_SECRET;
+
+//setto ejs
 app.use(express.static(__dirname + '/static'));
 app.set('view engine', 'ejs');
 
@@ -27,7 +38,6 @@ app.use(function(req, res, next) {
     next();
   });
 
-var wss=new websocket.Server({port: 8002});
 
 //VARIABILI GLOBALI
 let url_to_save='';
@@ -50,6 +60,33 @@ app.use(express.urlencoded({
 app.use(express.json());
 
 
+//*******************SWAGGER **************/
+const swaggerOptions={
+    swaggerDefinition: {
+        info:{
+            title: 'MarsAdvisor API Documentation',
+            description: 'Questa è la documentazione delle API REST offerte dal servizio MarsAdvisor.\n'+
+            'Queste API consentono di salvare su un database file multimediali della NASA che vengono ritenuti interessanti aggiungendo un commento.\n'+
+            'Un secondo tipo di servizi consente invece di accedere ad informazioni riguardanti i corpi celesti del Sistema Solare.\n'+
+            'Per fornire una risposta il più accurata possibile queste API si avvalgono a loro volta di altri servizi REST, in particolare\n'+
+            'degli endpoint AstronomyApi ( per i dati astronomici ) e Geoapify ( per la localizzazione della posizione dell\' utente.\n' +
+            'Le API sono accedibili come qualsiasi sevizio REST tramite HTTP\n'+
+            'E\' possibile testare le API direttamente da questa pagina web ',
+            contact: {
+                name: 'Matteo Villano',
+            },
+            servers: ['http://localhost:8005'],
+        }
+    },
+    apis: ['docs.js']
+}
+
+const swaggerDocs=swaggerJsDoc(swaggerOptions);
+
+app.use('/api-docs',swaggerUi.serve,swaggerUi.setup(swaggerDocs));
+
+
+
 /************************************MONGODB******************************/
 
 //schema
@@ -61,11 +98,86 @@ const itemSchema=new mongoose.Schema({
     explanation: String,
     date: String,
     copyright: String,
-    comment: String
+    comment: String,
+    api_key: {
+        type: String,
+        required: true
+    }
 });
 
 //model
 const Item=mongoose.model('Item',itemSchema);
+
+/****************************WEBSOCKET**********************************/
+//inizializzo la websocket
+const wss=new websocket.Server({port: ws_port});
+
+//gestione ws
+wss.on('connection',function(ws){
+    //console.log('nouva websocket creata');
+    ws.on('message',async function(msg){
+        console.log('[WS] Recived: '+msg);
+        let ws_cmd;
+        try{
+            ws_cmd=JSON.parse(msg);
+        }catch(err){
+            ws.send('Errore, non si può parsare la stringa inviata');
+            return;
+        }
+
+        if(!isValidAK(ws_cmd.api_key)){
+            ws.send('Invalid API_KEY, potresti non essere loggato');
+            return;
+        }
+        const api_key=ws_cmd.api_key;
+
+        if(!ws_cmd.cmd){
+            ws.send('Errore, nessun comando trovato');
+            return;
+        }else if(ws_cmd.cmd=='save_apod'){
+            try{
+                const date=ws_cmd.date||(new Date).toISOString().slice(0,10);
+                //ws.send('comando ricevuto... salvo l\'apod del '+date);
+                const nasa_res=await axios.get("https://api.nasa.gov/planetary/apod?",{
+                    params: {
+                        api_key: nasa_api_key,
+                        date: date
+                    }
+                });
+            
+                const nasa_data=nasa_res.data;
+                        
+                const new_item=new Item({
+                    title: nasa_data.title,
+                    media_type: nasa_data.media_type,
+                    url: nasa_data.url,
+                    hdurl: nasa_data.hdurl,
+                    explanation: nasa_data.explanation,
+                    date: nasa_data.date,
+                    copyright: nasa_data.copyright,
+                    //comment: comment,
+                    api_key: api_key
+                });
+                const result=await new_item.save();
+                if(result._id){
+                    ws.send('Oggetto salvato correttamente sul DB');
+                }else{
+                    ws.send('Errore, impossibile salvare l\'ogetto sul db');
+                }
+                //console.log(result);
+            }catch(err){
+                ws.send('Errore, qualcosa è andato storto...'+err);
+            }
+        }else{
+            ws.send('Comando sconosciuto');
+        }
+
+    });
+
+});
+
+
+
 
 const authRoutes = require('./routes/authRoutes');  // carica e rende globali nell'app le route di authRoutes così che possa essere utilizzato
 app.use(authRoutes);
@@ -106,6 +218,14 @@ app.get('/', function(req, res) {
     })
 
     
+});
+
+app.get('/1',function(req,res){
+    res.send('<!DOCTYPE html><html><head><title>MarsAdvisor</title></head><body><h1>MarsAdvisor index</h1></br> <a href="/ws">ws</a></br><a href="/api-docs">documentazione</a></body></html>');
+});
+
+app.get('/ws', function(req,res){
+    res.render('ws');
 });
 
 app.post('/', function(req, res) {
@@ -232,7 +352,6 @@ app.post('/mars', function(req, res) {
 })
 
 
-
 /*************************************REST API **************************************/
 
 /////////////////post (create)
@@ -265,94 +384,315 @@ app.post('/api/apod',async function(req,res){
     }
 });
 
-app.post('/api/mars',function(req,res){
-    //da implementare
+
+function isValidAK(api_key){
+    if(!api_key)
+    return false;
+    return true;
+}
+
+//******************INTERFACCIA REST*********************/
+
+//***********GET******************/
+app.get('/api/resources',async function(req,res){
+    try{
+        const api_key=req.query.api_key;
+        if(isValidAK(api_key)){
+            const id=req.query.id||req.body.id;
+            let result;
+            let sorter={};
+            let selecter={};
+            if(req.query.sort){
+                sorter[req.query.sort]=1;
+            }
+            if(req.query.select){
+                let temp=req.query.select.split(',');
+                for(const i in temp){
+                    selecter[temp[i]]=1
+                }
+            }
+            if(id){
+                result=await Item
+                    .find({
+                        api_key: api_key,
+                        _id: id
+                    })
+                    .select(selecter);
+            }else{
+                
+                result=await Item
+                    .find({
+                        api_key: api_key
+                    })
+                    .limit(parseInt(req.query.limit))
+                    .sort(sorter)
+                    .select(selecter);
+            }
+            
+            //console.log(result);
+            res.send(result);
+        }else{
+            res.status(400).send('API KEY assente o invalida');
+        }
+    }catch(err){
+        res.status(400).send('Errore\n'+err);
+    }
 });
 
-///////////////get (read)
-app.get('/api',async function(req,res){
-    if(req.body.id){
 
-        const id=req.body.id;
-        const result=await Item
-            .findById(id)
-            //la riga successiva andrà decommentata e serevirà ad implementare la funzione multiutente
-            //.find({user: "xxxxxx"})//questa modifica va effettuata ovunque, attenzione non è segnalata
-            .select(req.body.select);
+app.get('/api/resources/:id',async function(req,res){
+    try{
+        const api_key=req.query.api_key;
+        if(isValidAK(api_key)){
+            const id=req.params.id||req.query.id||req.body.id;
+            let result;
+            let sorter={};
+            let selecter={};
+            if(req.query.sort){
+                sorter[req.query.sort]=1;
+            }
+            if(req.query.select){
+                let temp=req.query.select.split(',');
+                for(const i in temp){
+                    selecter[temp[i]]=1
+                }
+            }
+            if(id){
+                result=await Item
+                    .findById(id)
+                    .find({
+                        api_key: api_key
+                    })
+                    .select(selecter);
+            }else{
+                
+                result=await Item
+                    .find({
+                        api_key: api_key
+                    })
+                    .limit(parseInt(req.query.limit))
+                    .sort(sorter)
+                    .select(selecter);
+            }
+            
+            //console.log(result);
+            res.send(result);
+        }else{
+            res.status(400).send('API KEY assente o invalida');
+        }
+    }catch(err){
+        res.status(400).send('Errore\n'+err);
+    }
+});
+
+
+//***************POST**********************/
+app.post('/api/resources/apod',async function(req,res){
+    const api_key=req.query.api_key||req.body.api_key;
+    if(isValidAK(api_key)){
+        try{
+            const date=req.body.date||(new Date).toISOString().slice(0,10);
+            const comment=req.body.comment;
+            const nasa_res=await axios.get("https://api.nasa.gov/planetary/apod?",{
+                params: {
+                    api_key: nasa_api_key,
+                    date: date
+                }
+            });
+            
+            const nasa_data=nasa_res.data;
+            //console.log(nasa_data);
+            
+            const new_item=new Item({
+                title: nasa_data.title,
+                media_type: nasa_data.media_type,
+                url: nasa_data.url,
+                hdurl: nasa_data.hdurl,
+                explanation: nasa_data.explanation,
+                date: nasa_data.date,
+                copyright: nasa_data.copyright,
+                comment: comment,
+                api_key: api_key
+            });
+            const result=await new_item.save();
+            //console.log('oleeee');
+            res.send(result);
+            
+        }catch(err){
+            //console.log(err);
+            res.status(400).send('qualcosa è andato storto durante la procedura');
+        }
+    }else{
+        res.status(400).send('API KEY assente o invalida');
+    }
+});
+
+
+
+//*********************PUT***************************/
+app.put('/api/resources',async function(req,res){
+    const api_key=req.query.api_key||req.body.api_key;
+    if(isValidAK(api_key)){
+
+        const result=await Item.updateOne({
+            _id: req.body.id,
+            api_key: api_key
+        },{
+            comment: req.body.comment
+        });
         res.send(result);
     }else{
-        const result=await Item
-            .find(req.body.find)
-            .limit(parseInt(req.body.limit))
-            .sort(req.body.sort)
-            .select(req.body.select);
+        res.status(400).send('API KEY assente o invaida');
+    }
+});
 
+
+ app.put('/api/resources/one',async function(req,res){
+    const api_key=req.query.api_key||req.body.api_key;
+    if(isValidAK(api_key)){
+        const new_comment=req.body.new_comment;
+        let filter=req.body;
+        filter['new_comment']=undefined;
+        filter['api_key']=api_key;
+        filter['comment']=filter['old_comment'];
+        filter['old_comment']=undefined;
+
+        const result=await Item.updateOne(filter,{
+            comment: new_comment
+        });
         res.send(result);
+    }else{
+        res.status(400).send('API KEY assente o invaida');
     }
 });
 
-//////////put (update)
-app.put('/api',async function(req,res){
-    const id=req.body.id;
-    if(!id){
-        res.send('you have to give the id parameter');
-        return;
-    }
-    const item1=await Item.findById(id);
-    if(!item1){
-        res.send('No item found');
-        return;
-    }
-    console.log('okkk');
-    console.log(req.body.comment);
-    item1.comment=req.body.comment;
-    const result=await item1.save();
-    //const setter={comment: req.body.comment};
-    //const response=item1.set(setter);
 
-    res.send(result);
+ app.put('/api/resources/many',async function(req,res){
+    const api_key=req.query.api_key||req.body.api_key;
+    if(isValidAK(api_key)){
+        const new_comment=req.body.new_comment;
+        let filter=req.body;
+        filter['new_comment']=undefined;
+        filter['api_key']=api_key;
+        filter['comment']=filter['old_comment'];
+        filter['old_comment']=undefined;
+
+        const result=await Item.updateMany(filter,{
+            comment: new_comment
+        });
+        res.send(result);
+    }else{
+        res.status(400).send('API KEY assente o invaida');
+    }
 });
 
-app.put('/api/one',async function(req,res){
-    const comment=req.body.comment;
-    const result=await Item.updateOne(req.body.filter,{
-        $set: {
-            comment: comment
+//*********************DELETE***************************/
+app.delete('/api/resources', async function(req,res){
+    const api_key=req.query.api_key||req.body.api_key;
+    if(isValidAK(api_key)){
+        if(req.body.id){
+            const result= await Item.deleteOne({
+                _id: req.body.id,
+                api_key: api_key
+            });
+            res.send(result);
+        }else{
+            res.status(400).send('Id assente');
         }
-    });
-    res.send(result);
+    }else{
+        res.status(400).send('API KEY assente o invalido');
+    }
 });
 
-app.put('/api/many',async function(req,res){
-    const comment=req.body.comment;
-    const result=await Item.updateMany(req.body.filter,{
-        $set: {
-            comment: comment
+
+ app.delete('/api/resources/one', async function(req,res){
+    const api_key=req.query.api_key||req.body.api_key;
+    if(isValidAK(api_key)){
+        let filter=req.body;
+        filter['api_key']=api_key;
+        //console.log(filter);
+        const result=await Item.deleteOne(filter);
+        res.send(result);
+    }else{
+        res.status(400).send('API KEY assente o invalido');
+    }
+});
+
+
+ app.delete('/api/resources/many', async function(req,res){
+    const api_key=req.query.api_key||req.body.api_key;
+    if(isValidAK(api_key)){
+        let filter=req.body;
+        filter['api_key']=api_key;
+        //console.log(filter);
+        const result=await Item.deleteMany(filter);
+        res.send(result);
+    }else{
+        res.status(400).send('API KEY assente o invalido');
+    }
+});
+
+
+app.get('/api/bodies', async function(req,res){
+    const response = await bodies();
+    console.log(response);
+    if(!response.error){
+        res.send(response.response);
+    }
+    else{
+        res.status(400).send('Errore chiamata');
+    }
+});
+
+app.get('/api/bodies/position_body', async function(req,res){
+    const citta=req.query.city;
+    const corpo = req.query.corpo;
+    const data = req.query.data;
+    const ora = req.query.ora;
+
+    if(citta && corpo){
+        const posizione = await geoCoding(citta);
+        if(!posizione.error){
+            const response = await positionBody(posizione.response.properties["lat"], posizione.response.properties["lat"], corpo, data, ora);
+            if(!response.error){
+                res.send(response.response['data']['table']['rows'][0]["cells"][0]);
+            }
+            else{
+                "message" in response.response ? res.status(400).send(response.response["message"]) : res.status(400).send('Errore chiamata');
+            }
         }
-    });
-
-    res.send(result);
+        else{
+            res.status(400).send('Errore chiamata, città non valida');
+        }
+    }
+    else{
+        res.status(400).send('Parametri mancanti');
+    }
 });
 
+app.post('/api/bodies/moon_phase', async function(req,res){
+    const citta = req.body.city;
+    const data = req.body.data;
+    if(citta){
+        const posizione = await geoCoding(citta);
+        if(!posizione.error){
+            const response = await moon(posizione.response.properties["lat"], posizione.response.properties["lat"], data);
+            if(!response.error){
+                res.send(response.response);
+            }
+            else{
+                res.status(400).send('Errore chiamata');
+            }
+        }
+        else{
+            res.status(400).send('Errore chiamata, città non valida');
+        }
+    }else{
+        res.status(400).send('Parametri mancanti');
+    }
+})
 
-///////////////delete (delete)
-app.delete('/api',async function(req,res){
-    const id=req.body.id;
-    const result=await Item.findByIdAndDelete(id);
-    res.send(result);
-});
 
-app.delete('/api/one',async function(req,res){
-    const result=await Item.deleteOne(req.body.filter);
-
-    res.send(result);
-});
-
-app.delete('/api/many',async function(req,res){
-    const result=await Item.deleteMany(req.body.filter);
-
-    res.send(result);
-});
 
 /************************Server inizialization************************/
 
@@ -362,7 +702,6 @@ mongoose.connect(database_url,{
         useUnifiedTopology: true
     })
         .then(function(){
-            const port=8001;
             console.log('Connected to database');
             app.listen(port,function(){
                 console.log('listening on port '+port);
