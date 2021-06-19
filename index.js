@@ -248,7 +248,7 @@ app.post('/', function(req, res) {
     }
 });
 
-app.post('/google_oauth', function (req, res){  //post per il salvataggio su g. foto, inizio procedura oAuth
+app.post('/google_oauth', function (req, res){  //authorization request. 
     if(req.body.url_img){
         url_to_save = req.body.url_img;
         const google_params = new URLSearchParams({
@@ -257,7 +257,8 @@ app.post('/google_oauth', function (req, res){  //post per il salvataggio su g. 
             'response_type': 'code',
             'scope': 'https://www.googleapis.com/auth/photoslibrary.appendonly',  //solo salvataggio, niente lettura
             'access_type': 'online',
-            'state': 'rdc_project'
+            'state': 'rdc_project',
+            'prompt': "select_account consent"
         });
         res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${google_params}`);
     }
