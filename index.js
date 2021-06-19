@@ -235,7 +235,7 @@ app.post('/', function(req, res) {
                     url = data.url;
                     is_video = true;  // risorsa solo video
                 }
-                res.render('index', { url: url , title:data.title, description:data.explanation , copyright:typeof(data.copyright) != 'undefined' ? data.copyright : ' - ', date: data.date, video: is_video});
+                res.render('index', { url: url , title:data.title, description:data.explanation , copyright:typeof(data.copyright) != 'undefined' ? data.copyright : ' - ', date: data.date, video: is_video,  google_status: ""});
                 binary_media = await getBinary(url);
             }
         }).catch((error) => {
