@@ -360,7 +360,7 @@
  *              type: string 
  *              required: false
  *              in: query
- *              description: ora scelta per l'osservazione ( HH-MM-SS )
+ *              description: ora scelta per l'osservazione ( HH:MM:SS )
  *      responses:
  *          200:
  *              description: richiesta effettuata correttamente, ritornati i valori richiesti
