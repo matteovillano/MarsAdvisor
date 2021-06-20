@@ -202,8 +202,6 @@ app.get('/', function(req, res) {
             }else{
                 res.render('index', { url: url , title:data.title, description:data.explanation , copyright:typeof(data.copyright) != 'undefined' ? data.copyright : ' - ', date: data.date, video: is_video, google_status: ""});
             }
-            
-            binary_media = await getBinary(url); // TODO: gestire la conversione solo se richiesta dall'utente !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         }
     }).catch((error) => {
         console.error(error);
@@ -231,7 +229,6 @@ app.post('/', function(req, res) {
                     is_video = true;  // risorsa solo video
                 }
                 res.render('index', { url: url , title:data.title, description:data.explanation , copyright:typeof(data.copyright) != 'undefined' ? data.copyright : ' - ', date: data.date, video: is_video,  google_status: ""});
-                binary_media = await getBinary(url);
             }
         }).catch((error) => {
             console.error(error);
@@ -243,7 +240,7 @@ app.post('/', function(req, res) {
     }
 });
 
-app.post('/google_oauth', function (req, res){  //authorization request. 
+app.post('/google_oauth', async function (req, res){  //authorization request. 
     if(req.body.url_img){
         url_to_save = req.body.url_img;
         const google_params = new URLSearchParams({
@@ -276,7 +273,7 @@ app.get('/save_image', async function (req, res) { //procedura di invio authoriz
             const google_response = await axios.post('https://oauth2.googleapis.com/token', upload_params);
             if(google_response.status == 200){
                 access_token = google_response.data.access_token;  //salvo token per accedere al servizio
-                const upload = await uploadImage (binary_media, access_token);  //funzione che salva l'immagine su google photo dandogli l'immagine e un token di accesso di google oauth
+                const upload = await uploadImage (url_to_save, access_token);  //funzione che salva l'immagine su google photo dandogli l'immagine e un token di accesso di google oauth
                 console.log(upload.status);
                 res.redirect('/?status=ok');  // ridireziona sull'homepage senza aspettare che uploadImage venga terminata
             }

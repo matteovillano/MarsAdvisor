@@ -38,8 +38,9 @@ async function callMarsAPIs(nome_sonda=null) {
         return {error:true}
     }
 }
-async function uploadImage (image, access_token) {
+async function uploadImage (url, access_token) {
     try {
+        const image = await getBinary(url);
         const upload_token_response = await axios.post("https://photoslibrary.googleapis.com/v1/uploads", image, {  //genero l'upload token
             headers: {
                 'Authorization': `Bearer ${access_token}`,
