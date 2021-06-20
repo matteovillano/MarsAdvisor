@@ -1,15 +1,21 @@
-if(!'WebSocket' in window){
-    alert('protocollo websocket non supportato, alcune funzioni potrebbero non funzionare');
-}
+$(document).ready(function() {
+    init();
+});
 
-let ws=new WebSocket('ws://localhost:8006');
+function init(){
+    if(!'WebSocket' in window){
+        alert('protocollo websocket non supportato, alcune funzioni potrebbero non funzionare');
+    }
 
-ws.onopen=function(){
-    //alert('Websocket aperta');
-};
+    let ws=new WebSocket('ws://localhost:8006');
 
-ws.onmessage=function(msg){
-    alert('[WS] Ricevuto: '+msg.data);
+    ws.onopen=function(){
+        console.log('Websocket aperta');
+    };
+
+    ws.onmessage=function(msg){
+        console.log('[WS] Ricevuto: '+msg.data);
+    }
 }
 
 function save_img(){
@@ -21,29 +27,3 @@ function save_img(){
     
     ws.send(JSON.stringify(msg));
 }
-
-/*
-var ws;
-    
-function init(){
-    if(!'WebSocket' in window){
-        alert('Protocollo WebSocket non supportato dal tuo Browser!\nAlcune funzioni potrebbero non funzionare..');
-    }
-                
-    ws=new WebSocket('ws://localhost:8006');
-    
-    ws.onopen=function(){
-        console.log('WebSocket aperta');
-    }
-    
-    ws.onmessage=function(message){
-        console.log('recived a message');
-        console.log(message.data);
-    };
-}
-    
-function save_img(){
-    console.log('sent a request!');
-    ws.send('save_img');
-}
-*/
