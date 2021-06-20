@@ -22,12 +22,13 @@ function init(){
 function save_img(){
 
     let email = $("#userEmail").val(); // EMAIL UTENTE LOGGATO
+    let sonda = $("#sonda").val(); // NOME SONDA SELEZIONATA
     let msg={
         cmd: 'save_mars',
         api_key: 'e'
     }
     
-    //ws.send(JSON.stringify(msg));
+    ws.send(JSON.stringify(msg));
 }
 
 function no_saveDB() {

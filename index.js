@@ -192,7 +192,7 @@ app.get('/', async function(req, res) {
         }
         else{
             const data = response.res.data;
-            console.log(data);
+
             let url = data.media_type == 'video' ? data.thumbnail_url : data.url;  // differenzio video e foto
             let is_video = false;
             if (data.media_type == 'video' && typeof(url) == 'undefined'){  // caso in cui non c'è una url per un'immagine
@@ -299,7 +299,7 @@ app.get('/mars', async function(req, res) {
             image = response.response;
             res.render('mars', 
             { url: image.img_src , sol: image.sol
-            , date: image.earth_date, name: image.rover.name
+            , date: image.earth_date, name: image.rover.name.toLowerCase()
             });
         }
     }catch(errors){
@@ -323,7 +323,7 @@ app.post('/mars', async function(req, res) {
 
                 res.render('mars', 
                 { url: image.img_src , sol: image.sol
-                , date: image.earth_date, name:image.rover.name
+                , date: image.earth_date, name:image.rover.name.toLowerCase()
                 });
             }            
         }

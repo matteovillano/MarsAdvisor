@@ -37,7 +37,7 @@
     <div class="container-fluid" >
         <div class="col-12" style="display: flex; flex-direction: column;">
             <h1 style="margin: 0 auto;">Mars</h1>
-            <h3 style="margin: 0 auto;">Ultima foto Sonda <%= name %> e Meteo</h3>
+            <h3 style="margin: 0 auto;">Ultima foto Sonda <strong style="text-transform: capitalize;"><%= name %></strong> e Meteo</h3>
         </div>
 
         <div class="col-12 pt-5 mt-5 mb-5">
@@ -76,5 +76,10 @@
         <iframe src='https://mars.nasa.gov/layout/embed/image/mslweather/' width='1200' height='620'  scrolling='no' frameborder='0'></iframe>
     </div>
     
+    <script>
+        const nome = '<%- name %>';
+        console.log(nome);
+        $("#sonda").val(nome);
+    </script>
     </body>
     </html>
