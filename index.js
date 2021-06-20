@@ -159,6 +159,8 @@ wss.on('connection',function(ws){
             }catch(err){
                 ws.send('Errore, qualcosa è andato storto...'+err);
             }
+        }else if(ws_cmd.cmd=='save_mars'){
+            ws.send('Funzione non ancora disponibile');
         }else{
             ws.send('Comando sconosciuto');
         }
@@ -211,13 +213,6 @@ app.get('/', function(req, res) {
     
 });
 
-app.get('/1',function(req,res){
-    res.send('<!DOCTYPE html><html><head><title>MarsAdvisor</title></head><body><h1>MarsAdvisor index</h1></br> <a href="/ws">ws</a></br><a href="/api-docs">documentazione</a></body></html>');
-});
-
-app.get('/ws', function(req,res){
-    res.render('ws');
-});
 
 app.post('/', function(req, res) {
     if (req.body['apod-day']){
@@ -378,6 +373,7 @@ app.post('/api/apod',async function(req,res){
 
 
 function isValidAK(api_key){
+
     if(!api_key)
     return false;
     return true;

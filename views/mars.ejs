@@ -8,33 +8,7 @@
         <link href="/css/style.css" rel="stylesheet" type="text/css">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 
-        <script>
-            var ws;
-    
-            function init(){
-                if(!'WebSocket' in window){
-                    alert('Protocollo WebSocket non supportato dal tuo Browser!\nAlcune funzioni potrebbero non funzionare..');
-                }
-                
-                ws=new WebSocket('ws://localhost:8006');
-    
-                ws.onopen=function(){
-                    console.log('WebSocket aperta');
-    
-                }
-    
-                ws.onmessage=function(message){
-                    console.log('recived a message');
-                    console.log(message.data);
-                };
-            }
-    
-            function save_img(){
-                console.log('sent a request!');
-                ws.send('save_img');
-            }
-    
-    
+        <script type="text/javascript" src="./js/mars.js">
         </script>
 
     </head>
