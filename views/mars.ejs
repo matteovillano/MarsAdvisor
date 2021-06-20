@@ -61,7 +61,14 @@
                         </form>
                     </div>
                     <div class="col-6">
-                        <button type="button" class="btn btn-primary"  onclick="save_img()" style="float: right;">Salva su database</button>
+                        <form  onsubmit="return false;" style="margin-left: 15px;float: right;">
+                            <% if (locals.user) { %>
+                            <input type="text" name='userEmail' id="userEmail" value="<%- locals.user.email -%>" style="display: none;">
+                            <button type="button" class="btn btn-primary"  onclick="save_img()" style="float: right;">Salva su database</button>
+                            <% } else { %>
+                            <button onclick="no_saveDB()" class="btn btn-primary">Salva su Database</button>
+                            <% } %>
+                          </form>
                     </div>
                 </div>
             </div>

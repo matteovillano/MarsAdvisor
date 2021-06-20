@@ -182,15 +182,17 @@ app.use(cookieParser());
 /////////////////////////////////////////////////////////////////////////////
 app.get('*', checkUser);  //utilizza su tutte le location il middleware checkUser per verificare se c'è un token dell'user ed è verificato, così da poter vedere i suoi dati dinamicamente (se ce ne sono)
 app.get('/user', requireAuth, (req, res) => res.render('user'));   //pagina dell'utente loggato (eseguie prima la funzione middleware requireAuth per verificare se l'utente è loggato)
-app.get('/', function(req, res) {
 
-    const resp = callNasaImageAPI();  //chiamo funzione generica 
-    resp.then(async (response) => {
+
+app.get('/', async function(req, res) {
+    try{
+        const response = await callNasaImageAPI();  //chiamo funzione generica 
         if (response.error){
             res.render('errore', {error: "Errore durante la chiamata API Apod"});  //gestire schermata di errore generica
         }
         else{
             const data = response.res.data;
+            console.log(data);
             let url = data.media_type == 'video' ? data.thumbnail_url : data.url;  // differenzio video e foto
             let is_video = false;
             if (data.media_type == 'video' && typeof(url) == 'undefined'){  // caso in cui non c'è una url per un'immagine
@@ -203,20 +205,19 @@ app.get('/', function(req, res) {
                 res.render('index', { url: url , title:data.title, description:data.explanation , copyright:typeof(data.copyright) != 'undefined' ? data.copyright : ' - ', date: data.date, video: is_video, google_status: ""});
             }
         }
-    }).catch((error) => {
-        console.error(error);
+    }catch(errors){
+        console.error(errors);
         res.render('errore', {error: "Errore durante la chiamata API Apod"});
-    })
-
-    
+    }    
 });
 
 
-app.post('/', function(req, res) {
-    if (req.body['apod-day']){
-        const data = req.body['apod-day'];
-        const resp = callNasaImageAPI(data);  //chiamo funzione generica 
-        resp.then(async (response) => {
+app.post('/', async function(req, res) {
+    try{
+        if (req.body['apod-day']){
+            const data_apod = req.body['apod-day'];
+            const response = await callNasaImageAPI(data_apod);  //chiamo funzione generica 
+
             if (response.error){
                 res.render('errore', {error: "Errore durante la chiamata API Apod"});  //gestire schermata di errore generica
             }
@@ -230,17 +231,17 @@ app.post('/', function(req, res) {
                 }
                 res.render('index', { url: url , title:data.title, description:data.explanation , copyright:typeof(data.copyright) != 'undefined' ? data.copyright : ' - ', date: data.date, video: is_video,  google_status: ""});
             }
-        }).catch((error) => {
-            console.error(error);
-            res.render('errore', {error: "Errore durante la chiamata API Apod"});
-        })
-    }
-    else{
-        res.render('errore', {error: "Errore durante la richiesta POST, nessuna data è stata passata"}); // gestire errore
+        }
+        else{
+            res.render('errore', {error: "Errore durante la richiesta POST, nessuna data è stata passata"}); // gestire errore
+        }
+    }catch(errors){
+        console.error(errors);
+        res.render('errore', {error: "Errore durante la chiamata API Apod"});
     }
 });
 
-app.post('/google_oauth', async function (req, res){  //authorization request. 
+app.post('/google_oauth', function (req, res){  //authorization request. 
     if(req.body.url_img){
         url_to_save = req.body.url_img;
         const google_params = new URLSearchParams({
@@ -287,9 +288,9 @@ app.get('/save_image', async function (req, res) { //procedura di invio authoriz
     }
 })
 
-app.get('/mars', function(req, res) {
-    let call = callMarsAPIs();
-    call.then((response) => {
+app.get('/mars', async function(req, res) {
+    try{
+        let response = await callMarsAPIs();
         if(response.error){
             res.render('errore', {error: "Errore durante la chiamata API Mars Photos"});
         }
@@ -301,17 +302,18 @@ app.get('/mars', function(req, res) {
             , date: image.earth_date, name: image.rover.name
             });
         }
-    }).catch((error) => {
-        console.error(error);
-        res.render('errore', {error: "Errore durante la chiamata API Mars Photos"});
-    })
+    }catch(errors){
+        console.error(errors);
+        res.render('errore', {error: "Errore durante la chiamata API Mars Photos"});   
+    }
 });
 
-app.post('/mars', function(req, res) {
-    if(req.body['sonda']){
-        const sonda = req.body['sonda'];
-        let call = callMarsAPIs(sonda);
-        call.then((response) => {
+app.post('/mars', async function(req, res) {
+    try{
+        if(req.body['sonda']){
+            const sonda = req.body['sonda'];
+            let response = await callMarsAPIs(sonda);
+
             if(response.error){
                 res.render('errore', {error: "Errore durante la chiamata API Mars Photos"});
             }
@@ -323,16 +325,15 @@ app.post('/mars', function(req, res) {
                 { url: image.img_src , sol: image.sol
                 , date: image.earth_date, name:image.rover.name
                 });
-            }
-        }).catch((error) => {
-            console.error(error);
-            res.render('errore', {error: "Errore durante la chiamata API Mars Photos"});
-        })
-    }
-    else {
-        res.render('errore', {error: "Errore durante la richiesta POST, nessuna sonda è stata passata"});
-    }
-    
+            }            
+        }
+        else {
+            res.render('errore', {error: "Errore durante la richiesta POST, nessuna sonda è stata passata"});
+        }
+    }catch(errors){
+        console.error(errors);
+        res.render('errore', {errors: "Errore durante la chiamata API Mars Photos"});
+    }  
 })
 
 

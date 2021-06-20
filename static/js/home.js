@@ -1,4 +1,5 @@
 $(document).ready(function() {
+    let ws;
     let today = new Date();
     today.setDate(today.getDate()); // data di ieri, c'è il fuso orario di mezzo con le immagini nasa
     let dd = String(today.getDate()).padStart(2, '0');
@@ -30,12 +31,16 @@ function no_save() { // chiamata in caso di risorsa video senza una immagine thu
     alert("Impossibile salvare la risorsa su Google Foto");
 }
 
+function no_saveDB() {
+    alert("Attenzione. Devi essere loggato per procedere");
+}
+
 function init(){
     if(!'WebSocket' in window){
         alert('protocollo websocket non supportato, alcune funzioni potrebbero non funzionare');
     }
 
-    let ws=new WebSocket('ws://localhost:8006');
+    ws=new WebSocket('ws://localhost:8006');
 
     ws.onopen=function(){
         console.log('Websocket aperta');
@@ -48,11 +53,12 @@ function init(){
 
 function save_apod(){
     let date=document.getElementById('apod-day').value;
-    //console.log(date);
+    let email = $("#userEmail").val(); // EMAIL UTENTE LOGGATO
     let msg={
         cmd: 'save_apod',
         api_key: 'e'
     }
+
     if(date==""){
         ws.send(JSON.stringify(msg));
     }else{
