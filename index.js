@@ -13,6 +13,7 @@ const cookieParser = require('cookie-parser');
 const { geoCoding, starChart, positionBody , positions, bodies, moon} = require("./static/js/rest_calls");
 const { callNasaImageAPI, callMarsAPIs, getBinary , uploadImage} = require("./functions/api-calls");
 const { requireAuth, checkUser } = require('./middleware/authMiddleware');
+const User = require("./models/User");
 
 
 //operazioni di configurazione dei moduli
@@ -116,7 +117,7 @@ wss.on('connection',function(ws){
             return;
         }
 
-        if(!isValidAK(ws_cmd.api_key)){
+        if(!await isValidAK(ws_cmd.api_key)){
             ws.send('Invalid API_KEY, potresti non essere loggato');
             return;
         }
@@ -370,11 +371,13 @@ app.post('/api/apod',async function(req,res){
 });
 
 
-function isValidAK(api_key){
-
-    if(!api_key)
-    return false;
-    return true;
+async function isValidAK(api_key){
+    const user=await User.find({
+        api: api_key
+    });
+    if(user.length<1)
+    return null;
+    return user;
 }
 
 //******************INTERFACCIA REST*********************/
@@ -383,7 +386,7 @@ function isValidAK(api_key){
 app.get('/api/resources',async function(req,res){
     try{
         const api_key=req.query.api_key;
-        if(isValidAK(api_key)){
+        if(await isValidAK(api_key)){
             const id=req.query.id||req.body.id;
             let result;
             let sorter={};
@@ -429,7 +432,7 @@ app.get('/api/resources',async function(req,res){
 app.get('/api/resources/:id',async function(req,res){
     try{
         const api_key=req.query.api_key;
-        if(isValidAK(api_key)){
+        if(await isValidAK(api_key)){
             const id=req.params.id||req.query.id||req.body.id;
             let result;
             let sorter={};
@@ -475,7 +478,7 @@ app.get('/api/resources/:id',async function(req,res){
 //***************POST**********************/
 app.post('/api/resources/apod',async function(req,res){
     const api_key=req.query.api_key||req.body.api_key;
-    if(isValidAK(api_key)){
+    if(await isValidAK(api_key)){
         try{
             const date=req.body.date||(new Date).toISOString().slice(0,10);
             const comment=req.body.comment;
@@ -518,7 +521,7 @@ app.post('/api/resources/apod',async function(req,res){
 //*********************PUT***************************/
 app.put('/api/resources',async function(req,res){
     const api_key=req.query.api_key||req.body.api_key;
-    if(isValidAK(api_key)){
+    if(await isValidAK(api_key)){
 
         const result=await Item.updateOne({
             _id: req.body.id,
@@ -535,7 +538,7 @@ app.put('/api/resources',async function(req,res){
 
  app.put('/api/resources/one',async function(req,res){
     const api_key=req.query.api_key||req.body.api_key;
-    if(isValidAK(api_key)){
+    if(await isValidAK(api_key)){
         const new_comment=req.body.new_comment;
         let filter=req.body;
         filter['new_comment']=undefined;
@@ -555,7 +558,7 @@ app.put('/api/resources',async function(req,res){
 
  app.put('/api/resources/many',async function(req,res){
     const api_key=req.query.api_key||req.body.api_key;
-    if(isValidAK(api_key)){
+    if(await isValidAK(api_key)){
         const new_comment=req.body.new_comment;
         let filter=req.body;
         filter['new_comment']=undefined;
@@ -575,7 +578,7 @@ app.put('/api/resources',async function(req,res){
 //*********************DELETE***************************/
 app.delete('/api/resources', async function(req,res){
     const api_key=req.query.api_key||req.body.api_key;
-    if(isValidAK(api_key)){
+    if(await isValidAK(api_key)){
         if(req.body.id){
             const result= await Item.deleteOne({
                 _id: req.body.id,
@@ -593,7 +596,7 @@ app.delete('/api/resources', async function(req,res){
 
  app.delete('/api/resources/one', async function(req,res){
     const api_key=req.query.api_key||req.body.api_key;
-    if(isValidAK(api_key)){
+    if(await isValidAK(api_key)){
         let filter=req.body;
         filter['api_key']=api_key;
         //console.log(filter);
@@ -607,7 +610,7 @@ app.delete('/api/resources', async function(req,res){
 
  app.delete('/api/resources/many', async function(req,res){
     const api_key=req.query.api_key||req.body.api_key;
-    if(isValidAK(api_key)){
+    if(await isValidAK(api_key)){
         let filter=req.body;
         filter['api_key']=api_key;
         //console.log(filter);
