@@ -53,7 +53,7 @@ function init(){
 
 function save_apod(){
     let date=document.getElementById('apod-day').value;
-    let email = $("#userEmail").val(); // EMAIL UTENTE LOGGATO
+    let api_key = key; // key UTENTE LOGGATO
     let msg={
         cmd: 'save_apod',
         api_key: 'e'

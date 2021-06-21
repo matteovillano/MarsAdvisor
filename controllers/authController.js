@@ -127,6 +127,7 @@ module.exports.update_password_patch = async (req, res, next) => {
       if (err) {
         console.log(err.message);
         res.locals.user = null;
+        res.locals.key = "";
         next();
       } else {
         if (password) {
@@ -140,6 +141,7 @@ module.exports.update_password_patch = async (req, res, next) => {
     });
   } else {
     res.locals.user = null;
+    res.locals.key = "";
     next();
   }
 };

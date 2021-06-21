@@ -73,7 +73,6 @@
                 <% } %>    
                 <form  onsubmit="return false;" style="margin-left: 15px;">
                   <% if (locals.user) { %>
-                  <input type="text" name='userEmail' id="userEmail" value="<%- locals.user.email -%>" style="display: none;">
                   <button onclick="save_apod()" class="btn btn-primary">Salva su Database</button>
                   <% } else { %>
                   <button onclick="no_saveDB()" class="btn btn-primary">Salva su Database</button>
@@ -99,6 +98,7 @@
   var alertList = document.querySelectorAll('.alert')
     alertList.forEach(function (alert) {
       new bootstrap.Alert(alert)
-  })
+  });
+  let key ="<%- locals.key -%>";
 </script>
 </html>

@@ -63,7 +63,6 @@
                     <div class="col-6">
                         <form  onsubmit="return false;" style="margin-left: 15px;float: right;">
                             <% if (locals.user) { %>
-                            <input type="text" name='userEmail' id="userEmail" value="<%- locals.user.email -%>" style="display: none;">
                             <button type="button" class="btn btn-primary"  onclick="save_img()" style="float: right;">Salva su database</button>
                             <% } else { %>
                             <button onclick="no_saveDB()" class="btn btn-primary">Salva su Database</button>
@@ -77,8 +76,9 @@
     </div>
     
     <script>
+        let key ="<%- locals.key -%>";
+
         const nome = '<%- name %>';
-        console.log(nome);
         $("#sonda").val(nome);
     </script>
     </body>

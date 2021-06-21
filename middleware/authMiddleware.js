@@ -25,15 +25,18 @@ const checkUser = (req, res, next) => {
       if (err) {
         console.log(err.message);
         res.locals.user = null;
+        res.locals.key = "";
         next();
       } else {
         let user = await User.findById(decodedToken.id);
         res.locals.user = user;
+        res.locals.key = user.api;
         next();
       }
     });
   } else {
     res.locals.user = null;
+    res.locals.key = "";
     next();
   }
 };
