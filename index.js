@@ -13,6 +13,7 @@ const cookieParser = require('cookie-parser');
 const { geoCoding, starChart, positionBody , positions, bodies, moon} = require("./static/js/rest_calls");
 const { callNasaImageAPI, callMarsAPIs, getBinary , uploadImage} = require("./functions/api-calls");
 const { requireAuth, checkUser } = require('./middleware/authMiddleware');
+const User = require("./models/User");
 
 
 //operazioni di configurazione dei moduli
@@ -90,7 +91,7 @@ const itemSchema=new mongoose.Schema({
     date: String,
     copyright: String,
     comment: String,
-    api_key: {
+    username: {
         type: String,
         required: true
     }
@@ -116,7 +117,8 @@ wss.on('connection',function(ws){
             return;
         }
 
-        if(!isValidAK(ws_cmd.api_key)){
+        const username=await isValidAK(ws_cmd.api_key);
+        if(!username){
             ws.send('Invalid API_KEY, potresti non essere loggato');
             return;
         }
@@ -147,7 +149,7 @@ wss.on('connection',function(ws){
                     date: nasa_data.date,
                     copyright: nasa_data.copyright,
                     //comment: comment,
-                    api_key: api_key
+                    username: username
                 });
                 const result=await new_item.save();
                 if(result._id){
@@ -370,11 +372,13 @@ app.post('/api/apod',async function(req,res){
 });
 
 
-function isValidAK(api_key){
-
-    if(!api_key)
-    return false;
-    return true;
+async function isValidAK(api_key){
+    const user=await User.find({
+        api: api_key
+    });
+    if(user.length<1)
+    return null;
+    return user[0].username;
 }
 
 //******************INTERFACCIA REST*********************/
@@ -383,7 +387,8 @@ function isValidAK(api_key){
 app.get('/api/resources',async function(req,res){
     try{
         const api_key=req.query.api_key;
-        if(isValidAK(api_key)){
+        const username=await isValidAK(api_key);
+        if(username){
             const id=req.query.id||req.body.id;
             let result;
             let sorter={};
@@ -400,7 +405,7 @@ app.get('/api/resources',async function(req,res){
             if(id){
                 result=await Item
                     .find({
-                        api_key: api_key,
+                        username: username,
                         _id: id
                     })
                     .select(selecter);
@@ -408,7 +413,7 @@ app.get('/api/resources',async function(req,res){
                 
                 result=await Item
                     .find({
-                        api_key: api_key
+                        username: username
                     })
                     .limit(parseInt(req.query.limit))
                     .sort(sorter)
@@ -429,7 +434,8 @@ app.get('/api/resources',async function(req,res){
 app.get('/api/resources/:id',async function(req,res){
     try{
         const api_key=req.query.api_key;
-        if(isValidAK(api_key)){
+        const username=await isValidAK(api_key);
+        if(username){
             const id=req.params.id||req.query.id||req.body.id;
             let result;
             let sorter={};
@@ -447,14 +453,14 @@ app.get('/api/resources/:id',async function(req,res){
                 result=await Item
                     .findById(id)
                     .find({
-                        api_key: api_key
+                        username: username
                     })
                     .select(selecter);
             }else{
                 
                 result=await Item
                     .find({
-                        api_key: api_key
+                        username: username
                     })
                     .limit(parseInt(req.query.limit))
                     .sort(sorter)
@@ -475,7 +481,8 @@ app.get('/api/resources/:id',async function(req,res){
 //***************POST**********************/
 app.post('/api/resources/apod',async function(req,res){
     const api_key=req.query.api_key||req.body.api_key;
-    if(isValidAK(api_key)){
+    const username=await isValidAK(api_key);
+    if(username){
         try{
             const date=req.body.date||(new Date).toISOString().slice(0,10);
             const comment=req.body.comment;
@@ -488,7 +495,6 @@ app.post('/api/resources/apod',async function(req,res){
             
             const nasa_data=nasa_res.data;
             //console.log(nasa_data);
-            
             const new_item=new Item({
                 title: nasa_data.title,
                 media_type: nasa_data.media_type,
@@ -498,7 +504,7 @@ app.post('/api/resources/apod',async function(req,res){
                 date: nasa_data.date,
                 copyright: nasa_data.copyright,
                 comment: comment,
-                api_key: api_key
+                username: username
             });
             const result=await new_item.save();
             //console.log('oleeee');
@@ -518,11 +524,12 @@ app.post('/api/resources/apod',async function(req,res){
 //*********************PUT***************************/
 app.put('/api/resources',async function(req,res){
     const api_key=req.query.api_key||req.body.api_key;
-    if(isValidAK(api_key)){
+    const username=await isValidAK(api_key);
+    if(username){
 
         const result=await Item.updateOne({
             _id: req.body.id,
-            api_key: api_key
+            username: username
         },{
             comment: req.body.comment
         });
@@ -535,11 +542,12 @@ app.put('/api/resources',async function(req,res){
 
  app.put('/api/resources/one',async function(req,res){
     const api_key=req.query.api_key||req.body.api_key;
-    if(isValidAK(api_key)){
+    const username=await isValidAK(api_key);
+    if(username){
         const new_comment=req.body.new_comment;
         let filter=req.body;
         filter['new_comment']=undefined;
-        filter['api_key']=api_key;
+        filter['username']=username;
         filter['comment']=filter['old_comment'];
         filter['old_comment']=undefined;
 
@@ -555,11 +563,12 @@ app.put('/api/resources',async function(req,res){
 
  app.put('/api/resources/many',async function(req,res){
     const api_key=req.query.api_key||req.body.api_key;
-    if(isValidAK(api_key)){
+    const username=await isValidAK(api_key);
+    if(username){
         const new_comment=req.body.new_comment;
         let filter=req.body;
         filter['new_comment']=undefined;
-        filter['api_key']=api_key;
+        filter['username']=username;
         filter['comment']=filter['old_comment'];
         filter['old_comment']=undefined;
 
@@ -575,11 +584,12 @@ app.put('/api/resources',async function(req,res){
 //*********************DELETE***************************/
 app.delete('/api/resources', async function(req,res){
     const api_key=req.query.api_key||req.body.api_key;
-    if(isValidAK(api_key)){
+    const username=await isValidAK(api_key);
+    if(username){
         if(req.body.id){
             const result= await Item.deleteOne({
                 _id: req.body.id,
-                api_key: api_key
+                username: username
             });
             res.send(result);
         }else{
@@ -593,9 +603,10 @@ app.delete('/api/resources', async function(req,res){
 
  app.delete('/api/resources/one', async function(req,res){
     const api_key=req.query.api_key||req.body.api_key;
-    if(isValidAK(api_key)){
+    const username=await isValidAK(api_key);
+    if(username){
         let filter=req.body;
-        filter['api_key']=api_key;
+        filter['username']=username;
         //console.log(filter);
         const result=await Item.deleteOne(filter);
         res.send(result);
@@ -607,9 +618,10 @@ app.delete('/api/resources', async function(req,res){
 
  app.delete('/api/resources/many', async function(req,res){
     const api_key=req.query.api_key||req.body.api_key;
-    if(isValidAK(api_key)){
+    const username=await isValidAK(api_key);
+    if(username){
         let filter=req.body;
-        filter['api_key']=api_key;
+        filter['username']=username;
         //console.log(filter);
         const result=await Item.deleteMany(filter);
         res.send(result);
