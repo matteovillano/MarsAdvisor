@@ -47,7 +47,7 @@ function init(){
     };
 
     ws.onmessage=function(msg){
-        console.log('[WS] Ricevuto: '+msg.data);
+        alert('[WS] Ricevuto: '+msg.data);
     }
 }
 
@@ -56,13 +56,11 @@ function save_apod(){
     let api_key = key; // key UTENTE LOGGATO
     let msg={
         cmd: 'save_apod',
-        api_key: 'e'
+        api_key: api_key
     }
 
-    if(date==""){
-        ws.send(JSON.stringify(msg));
-    }else{
+    if(date!=""){
         msg['date']=date;
-        ws.send(JSON.stringify(msg));
     }
+    ws.send(JSON.stringify(msg));
 }

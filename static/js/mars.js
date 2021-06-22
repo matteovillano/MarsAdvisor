@@ -15,7 +15,7 @@ function init(){
     };
 
     ws.onmessage=function(msg){
-        console.log('[WS] Ricevuto: '+msg.data);
+        alert('[WS] Ricevuto: '+msg.data);
     }
 }
 
@@ -25,9 +25,8 @@ function save_img(){
     let sonda = $("#sonda").val(); // NOME SONDA SELEZIONATA
     let msg={
         cmd: 'save_mars',
-        api_key: 'e'
+        api_key: api_key
     }
-    console.log(api_key);
     ws.send(JSON.stringify(msg));
 }
 
