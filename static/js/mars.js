@@ -25,7 +25,8 @@ function save_img(){
     let sonda = $("#sonda").val(); // NOME SONDA SELEZIONATA
     let msg={
         cmd: 'save_mars',
-        api_key: api_key
+        api_key: api_key,
+        rover: sonda
     }
     ws.send(JSON.stringify(msg));
 }

@@ -162,7 +162,39 @@ wss.on('connection',function(ws){
                 ws.send('Errore, qualcosa è andato storto...'+err);
             }
         }else if(ws_cmd.cmd=='save_mars'){
-            ws.send('Funzione non ancora disponibile');
+            //ws.send('Funzione non ancora disponibile');
+            const nome_sonda=ws_cmd.rover;
+            console.log(nome_sonda);
+            try{
+                const response = await axios.get('https://api.nasa.gov/mars-photos/api/v1/rovers/' + (nome_sonda && (nome_sonda=='opportunity'||'curiosity'||'perseverance'||'spirit') ? nome_sonda : 'perseverance') + '/latest_photos?', {  //controllo se la sonda è selezionata
+                    params: {
+                        api_key: nasa_api_key
+                    }
+                });
+                const data=response.data.latest_photos[0]
+                console.log(data);
+
+                const new_item=new Item({
+                    title: nome_sonda+data.id,
+                    media_type: 'image',
+                    url: data.img_src,
+                    hdurl: data.img_src,
+                    date: data.earth_date,
+                    copyright: nome_sonda,
+                    username: username
+                });
+                const result=await new_item.save();
+                if(result._id){
+                    ws.send('Oggetto salvato correttamente sul DB');
+                }else{
+                    ws.send('Errore, impossibile salvare l\'ogetto sul db');
+                }
+            }catch(err){
+                ws.send('Errore qualcosa è andato storto!');
+                console.error(err);
+            }
+
+
         }else{
             ws.send('Comando sconosciuto');
         }
