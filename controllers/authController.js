@@ -123,22 +123,27 @@ module.exports.update_password_patch = async (req, res, next) => {
   const token = req.cookies.jwt;
   const password = req.body.password;
   if (token) {
-    jwt.verify(token, process.env.JWT_SECRET, async (err, decodedToken) => {
-      if (err) {
-        console.log(err.message);
-        res.locals.user = null;
-        res.locals.key = "";
-        next();
-      } else {
-        if (password) {
-          let user = await User.findById(decodedToken.id);
-          user.password = password;
-          res.redirect("/user");
+    jwt.verify(
+      token,
+      process.env.JWT_SECRET,
+      { algorithms: ["HS256"] },
+      async (err, decodedToken) => {
+        if (err) {
+          console.log(err.message);
+          res.locals.user = null;
+          res.locals.key = "";
+          next();
         } else {
-          res.json({ error: "errore update password" });
+          if (password) {
+            let user = await User.findById(decodedToken.id);
+            user.password = password;
+            res.redirect("/user");
+          } else {
+            res.json({ error: "errore update password" });
+          }
         }
       }
-    });
+    );
   } else {
     res.locals.user = null;
     res.locals.key = "";
