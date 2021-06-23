@@ -26,12 +26,7 @@ async function callMarsAPIs(nome_sonda=null) {
                 api_key: api_key
             }
         });
-        // const response2 = await axios.get('https://api.nasa.gov/insight_weather/?', {
-        //     params: {
-        //         feedtype: 'json', version:'1.0', api_key: api_key
-        //     }
-        // });
-        // const key = Object.keys(response2.data.validity_checks)[0];
+
         return {error:false, response:response.data.latest_photos[0]};
     } catch (error) {
         console.error(error);
@@ -52,9 +47,9 @@ async function uploadImage (url, access_token) {
         const upload_token = upload_token_response.data;  //salvo l'upload token in upload_token
         const media_item = {
             'newMediaItems': [{
-                'description': 'Prima Foto',
+                'description': 'Foto del giorno Nasa',
                 'simpleMediaItem': {
-                    'fileName': 'Foto Nasa',
+                    'fileName': 'Foto del giorno Nasa',
                     'uploadToken': upload_token
                     }
             }]
@@ -66,8 +61,13 @@ async function uploadImage (url, access_token) {
             }
         });
 
-        console.log(upload_completion_response.data.newMediaItemResults[0].status);
-        return {status: "ok"}
+        const status_oauth = upload_completion_response.data.newMediaItemResults[0].status;
+        if(typeof(status_oauth.code) != "undefined"){
+            return {error:true, status: "ko"};
+        }
+        else{
+            return {status: "ok", error:false}
+        }
     } catch (error) {
         console.error(error);
         return {error:true, status: "ko"};

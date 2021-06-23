@@ -14,6 +14,7 @@ const { geoCoding, starChart, positionBody , positions, bodies, moon} = require(
 const { callNasaImageAPI, callMarsAPIs, getBinary , uploadImage} = require("./functions/api-calls");
 const { requireAuth, checkUser } = require('./middleware/authMiddleware');
 const User = require("./models/User");
+const { isUser } = require("./utils/isUser");
 
 
 //operazioni di configurazione dei moduli
@@ -98,104 +99,102 @@ const itemSchema=new mongoose.Schema({
 });
 
 //model
-const Item=mongoose.model('Item',itemSchema);
+const Item = mongoose.model('Item', itemSchema);
 
 /****************************WEBSOCKET**********************************/
 //inizializzo la websocket
-const wss=new websocket.Server({port: ws_port});
+const wss = new websocket.Server({ port: ws_port });
 
 //gestione ws
-wss.on('connection',function(ws){
-    //console.log('nouva websocket creata');
-    ws.on('message',async function(msg){
-        console.log('[WS] Recived: '+msg);
+wss.on('connection', function (ws) {
+
+    ws.on('message', async function (msg) {
+        console.log('[WS] Recived: ' + msg);
         let ws_cmd;
-        try{
-            ws_cmd=JSON.parse(msg);
-        }catch(err){
+        try {
+            ws_cmd = JSON.parse(msg);
+        } catch (err) {
             ws.send('Errore, non si può parsare la stringa inviata');
             return;
         }
 
-        const username=await isValidAK(ws_cmd.api_key);
-        if(!username){
+        const username = await isValidAK(ws_cmd.api_key);
+        if (!username) {
             ws.send('Invalid API_KEY, potresti non essere loggato');
             return;
         }
-        const api_key=ws_cmd.api_key;
+        const api_key = ws_cmd.api_key;
 
-        if(!ws_cmd.cmd){
+        if (!ws_cmd.cmd) {
             ws.send('Errore, nessun comando trovato');
             return;
-        }else if(ws_cmd.cmd=='save_apod'){
-            try{
-                const date=ws_cmd.date||(new Date).toISOString().slice(0,10);
-                //ws.send('comando ricevuto... salvo l\'apod del '+date);
-                const nasa_res=await axios.get("https://api.nasa.gov/planetary/apod?",{
-                    params: {
-                        api_key: nasa_api_key,
-                        date: date
-                    }
-                });
-            
-                const nasa_data=nasa_res.data;
-                        
-                const new_item=new Item({
-                    title: nasa_data.title,
-                    media_type: nasa_data.media_type,
-                    url: nasa_data.url,
-                    hdurl: nasa_data.hdurl,
-                    explanation: nasa_data.explanation,
-                    date: nasa_data.date,
-                    copyright: nasa_data.copyright,
-                    //comment: comment,
-                    username: username
-                });
-                const result=await new_item.save();
-                if(result._id){
-                    ws.send('Oggetto salvato correttamente sul DB');
-                }else{
-                    ws.send('Errore, impossibile salvare l\'ogetto sul db');
-                }
-                //console.log(result);
-            }catch(err){
-                ws.send('Errore, qualcosa è andato storto...'+err);
-            }
-        }else if(ws_cmd.cmd=='save_mars'){
-            //ws.send('Funzione non ancora disponibile');
-            const nome_sonda=ws_cmd.rover;
-            console.log(nome_sonda);
-            try{
-                const response = await axios.get('https://api.nasa.gov/mars-photos/api/v1/rovers/' + (nome_sonda && (nome_sonda=='opportunity'||'curiosity'||'perseverance'||'spirit') ? nome_sonda : 'perseverance') + '/latest_photos?', {  //controllo se la sonda è selezionata
-                    params: {
-                        api_key: nasa_api_key
-                    }
-                });
-                const data=response.data.latest_photos[0]
-                console.log(data);
+        } else if (ws_cmd.cmd == 'save_apod') {
+            try {
+                const date = ws_cmd.date || (new Date).toISOString().slice(0, 10);
+                const nasa_res = await callNasaImageAPI(date);
 
-                const new_item=new Item({
-                    title: nome_sonda+data.id,
-                    media_type: 'image',
-                    url: data.img_src,
-                    hdurl: data.img_src,
-                    date: data.earth_date,
-                    copyright: nome_sonda,
-                    username: username
-                });
-                const result=await new_item.save();
-                if(result._id){
-                    ws.send('Oggetto salvato correttamente sul DB');
-                }else{
-                    ws.send('Errore, impossibile salvare l\'ogetto sul db');
+                if(!nasa_res.error){
+                    const nasa_data = nasa_res.res.data;
+
+                    const new_item = new Item({
+                        title: nasa_data.title,
+                        media_type: nasa_data.media_type,
+                        url: nasa_data.url,
+                        hdurl: nasa_data.hdurl,
+                        explanation: nasa_data.explanation,
+                        date: nasa_data.date,
+                        copyright: nasa_data.copyright,
+                        username: username
+                    });
+                    const result = await new_item.save();
+                    if (result._id) {
+                        ws.send(JSON.stringify({"text":"Oggetto salvato correttamente sul DB", "status":"ok"}));
+                    } else {
+                        ws.send(JSON.stringify({"text":"Errore, impossibile salvare l\'ogetto sul db", "status":"ko"}));
+                    }
                 }
-            }catch(err){
-                ws.send('Errore qualcosa è andato storto!');
+                else{
+                    ws.send(JSON.stringify({"text":"Errore, qualcosa è andato storto... "+err, "status":"ko"}));
+                }
+
+            } catch (err) {
+                ws.send(JSON.stringify({"text":"Errore, qualcosa è andato storto... "+err, "status":"ko"}));
+            }
+        } else if (ws_cmd.cmd == 'save_mars') {
+            const nome_sonda = ws_cmd.rover;
+            console.log(nome_sonda);
+            try {
+                const response = await callMarsAPIs(nome_sonda);
+                if (!response.error){
+                    const data = response.response;
+                    console.log(data);
+
+                    const new_item = new Item({
+                        title: nome_sonda + data.id,
+                        media_type: 'image',
+                        url: data.img_src,
+                        hdurl: data.img_src,
+                        date: data.earth_date,
+                        copyright: nome_sonda,
+                        username: username
+                    });
+                    const result = await new_item.save();
+                    if (result._id) {
+                        ws.send(JSON.stringify({"text":"Oggetto salvato correttamente sul DB", "status":"ok"}));
+                    } else {
+                        ws.send(JSON.stringify({"text":"Errore, impossibile salvare l\'ogetto sul db ", "status":"ko"}));
+                    }
+                }
+                else{
+                    ws.send(JSON.stringify({"text":"Errore, qualcosa è andato storto... ", "status":"ko"}));
+                }
+            } catch (err) {
+                ws.send(JSON.stringify({"text":"Errore, qualcosa è andato storto... "+err, "status":"ko"}));
                 console.error(err);
             }
 
 
-        }else{
+        } else {
             ws.send('Comando sconosciuto');
         }
 
@@ -214,69 +213,97 @@ app.use(cookieParser());
 
 
 /////////////////////////////////////////////////////////////////////////////
-app.get('*', checkUser);  //utilizza su tutte le location il middleware checkUser per verificare se c'è un token dell'user ed è verificato, così da poter vedere i suoi dati dinamicamente (se ce ne sono)
+app.use('*', checkUser);  //utilizza su tutte le location il middleware checkUser per verificare se c'è un token dell'user ed è verificato, così da poter vedere i suoi dati dinamicamente (se ce ne sono)
 app.get('/user', requireAuth, (req, res) => res.render('user'));   //pagina dell'utente loggato (eseguie prima la funzione middleware requireAuth per verificare se l'utente è loggato)
 
 
-app.get('/', async function(req, res) {
-    try{
+app.get('/', async function (req, res) {
+    try {
         const response = await callNasaImageAPI();  //chiamo funzione generica 
-        if (response.error){
-            res.render('errore', {error: "Errore durante la chiamata API Apod"});  //gestire schermata di errore generica
+        if (response.error) {
+            res.render('errore', { error: "Errore durante la chiamata API Apod" });  //gestire schermata di errore generica
         }
-        else{
+        else {
             const data = response.res.data;
-
             let url = data.media_type == 'video' ? data.thumbnail_url : data.url;  // differenzio video e foto
             let is_video = false;
-            if (data.media_type == 'video' && typeof(url) == 'undefined'){  // caso in cui non c'è una url per un'immagine
+            if (data.media_type == 'video' && typeof (url) == 'undefined') {  // caso in cui non c'è una url per un'immagine
                 url = data.url;
                 is_video = true;  // la risorsa è solo video
             }
-            if(req.query.status){
-                res.render('index', { url: url , title:data.title, description:data.explanation , copyright:typeof(data.copyright) != 'undefined' ? data.copyright : ' - ', date: data.date, video: is_video, google_status: "ok"});
-            }else{
-                res.render('index', { url: url , title:data.title, description:data.explanation , copyright:typeof(data.copyright) != 'undefined' ? data.copyright : ' - ', date: data.date, video: is_video, google_status: ""});
+            
+            const utente = await isUser(req.cookies.jwt);
+            let favourite = null;
+            if(utente.user != null){
+                favourite = await Item.findOne({
+                    $or: [
+                        {url: data.thumbnail_url},
+                        {url: data.url}
+                    ],
+                    username: utente.user.username
+                }); 
+            }
+
+            if (req.query.status) {
+                res.render('index', { url: url, title: data.title, description: data.explanation, copyright: typeof (data.copyright) != 'undefined' ? data.copyright : ' - ', 
+                    date: data.date, video: is_video, google_status: req.query.status, is_favourite:favourite == null ? false: true });
+            } else {
+                res.render('index', { url: url, title: data.title, description: data.explanation, copyright: typeof (data.copyright) != 'undefined' ? data.copyright : ' - ', 
+                    date: data.date, video: is_video, google_status: "" ,is_favourite:favourite == null ? false: true});
             }
         }
-    }catch(errors){
+    } catch (errors) {
         console.error(errors);
-        res.render('errore', {error: "Errore durante la chiamata API Apod"});
-    }    
-});
-
-
-app.post('/', async function(req, res) {
-    try{
-        if (req.body['apod-day']){
-            const data_apod = req.body['apod-day'];
-            const response = await callNasaImageAPI(data_apod);  //chiamo funzione generica 
-
-            if (response.error){
-                res.render('errore', {error: "Errore durante la chiamata API Apod"});  //gestire schermata di errore generica
-            }
-            else{
-                const data = response.res.data;
-                let url = data.media_type == 'video' ? data.thumbnail_url : data.url;  // differenzio video e foto
-                let is_video = false;
-                if (data.media_type == 'video' && typeof(url) == 'undefined'){
-                    url = data.url;
-                    is_video = true;  // risorsa solo video
-                }
-                res.render('index', { url: url , title:data.title, description:data.explanation , copyright:typeof(data.copyright) != 'undefined' ? data.copyright : ' - ', date: data.date, video: is_video,  google_status: ""});
-            }
-        }
-        else{
-            res.render('errore', {error: "Errore durante la richiesta POST, nessuna data è stata passata"}); // gestire errore
-        }
-    }catch(errors){
-        console.error(errors);
-        res.render('errore', {error: "Errore durante la chiamata API Apod"});
+        res.render('errore', { error: "Errore durante la chiamata API Apod" });
     }
 });
 
-app.post('/google_oauth', function (req, res){  //authorization request. 
-    if(req.body.url_img){
+
+app.post('/', async function (req, res) {
+    try {
+        if (req.body['apod-day']) {
+            const data_apod = req.body['apod-day'];
+            const response = await callNasaImageAPI(data_apod);  //chiamo funzione generica 
+
+            if (response.error) {
+                res.render('errore', { error: "Errore durante la chiamata API Apod" });  //gestire schermata di errore generica
+            }
+            else {
+                const data = response.res.data;
+                let url = data.media_type == 'video' ? data.thumbnail_url : data.url;  // differenzio video e foto
+                let is_video = false;
+                if (data.media_type == 'video' && typeof (url) == 'undefined') {
+                    url = data.url;
+                    is_video = true;  // risorsa solo video
+                }
+
+                const utente = await isUser(req.cookies.jwt);
+                let favourite = null;
+                if(utente.user != null){
+                    favourite = await Item.findOne({
+                        $or: [
+                            {url: data.thumbnail_url},
+                            {url: data.url}
+                        ],
+                        username: utente.user.username
+                    }); 
+                }
+
+                res.render('index', { url: url, title: data.title, description: data.explanation, copyright: typeof (data.copyright) != 'undefined' ? data.copyright : ' - ', 
+                    date: data.date, video: is_video, google_status: "", is_favourite:favourite == null ? false: true });
+            }
+        }
+        else {
+            res.render('errore', { error: "Errore durante la richiesta POST, nessuna data è stata passata" }); 
+        }
+    } catch (errors) {
+        console.error(errors);
+        res.render('errore', { error: "Errore durante la chiamata API Apod" });
+    }
+});
+
+app.post('/google_oauth', function (req, res) {  //authorization request. 
+    if (req.body.url_img) {
         url_to_save = req.body.url_img;
         const google_params = new URLSearchParams({
             'client_id': client_id,
@@ -304,16 +331,21 @@ app.get('/save_image', async function (req, res) { //procedura di invio authoriz
         'grant_type': 'authorization_code'
     });
     if (code) {
-        try{
+        try {
             const google_response = await axios.post('https://oauth2.googleapis.com/token', upload_params);
-            if(google_response.status == 200){
+            if (google_response.status == 200) {
                 access_token = google_response.data.access_token;  //salvo token per accedere al servizio
-                const upload = await uploadImage (url_to_save, access_token);  //funzione che salva l'immagine su google photo dandogli l'immagine e un token di accesso di google oauth
+                const upload = await uploadImage(url_to_save, access_token);  //funzione che salva l'immagine su google photo dandogli l'immagine e un token di accesso di google oauth
                 console.log(upload.status);
-                res.redirect('/?status=ok');  // ridireziona sull'homepage senza aspettare che uploadImage venga terminata
+                if(upload.status == "ok"){
+                    res.redirect('/?status=ok'); 
+                }
+                else{
+                    res.redirect('/?status=ko'); 
+                }
             }
-            else{
-                res.render('errore', {error: "Errore durante la procedura oAuth"}); // gestire errore
+            else {
+                res.render('errore', { error: "Errore durante la procedura oAuth" }); // gestire errore
             }
         } catch (error) {
             console.log(error);
@@ -322,70 +354,93 @@ app.get('/save_image', async function (req, res) { //procedura di invio authoriz
     }
 })
 
-app.get('/mars', async function(req, res) {
-    try{
+app.get('/mars', async function (req, res) {
+    try {
         let response = await callMarsAPIs();
-        if(response.error){
-            res.render('errore', {error: "Errore durante la chiamata API Mars Photos"});
+        if (response.error) {
+            res.render('errore', { error: "Errore durante la chiamata API Mars Photos" });
         }
-        else{
+        else {
             let image;
             image = response.response;
-            res.render('mars', 
-            { url: image.img_src , sol: image.sol
-            , date: image.earth_date, name: image.rover.name.toLowerCase()
-            });
+
+            const utente = await isUser(req.cookies.jwt);
+            let favourite = null;
+            if(utente.user != null){
+                favourite = await Item.findOne({
+                    url: image.img_src,
+                    username: utente.user.username
+                }); 
+            }
+
+            res.render('mars',
+                {
+                    url: image.img_src, sol: image.sol
+                    , date: image.earth_date, name: image.rover.name.toLowerCase(),
+                    is_favourite:favourite == null ? false: true
+                });
         }
-    }catch(errors){
+    } catch (errors) {
         console.error(errors);
-        res.render('errore', {error: "Errore durante la chiamata API Mars Photos"});   
+        res.render('errore', { error: "Errore durante la chiamata API Mars Photos" });
     }
 });
 
-app.post('/mars', async function(req, res) {
-    try{
-        if(req.body['sonda']){
+app.post('/mars', async function (req, res) {
+    try {
+        if (req.body['sonda']) {
             const sonda = req.body['sonda'];
             let response = await callMarsAPIs(sonda);
 
-            if(response.error){
-                res.render('errore', {error: "Errore durante la chiamata API Mars Photos"});
+            if (response.error) {
+                res.render('errore', { error: "Errore durante la chiamata API Mars Photos" });
             }
-            else{
+            else {
                 let image;
                 image = response.response;
 
-                res.render('mars', 
-                { url: image.img_src , sol: image.sol
-                , date: image.earth_date, name:image.rover.name.toLowerCase()
-                });
-            }            
+                const utente = await isUser(req.cookies.jwt);
+                let favourite = null;
+                if(utente.user != null){
+                    favourite = await Item.findOne({
+                        url: image.img_src,
+                        username: utente.user.username
+                    }); 
+                }
+
+                res.render('mars',
+                    {
+                        url: image.img_src, sol: image.sol
+                        , date: image.earth_date, name: image.rover.name.toLowerCase(),
+                        is_favourite:favourite == null ? false: true
+                    });
+            }
         }
         else {
-            res.render('errore', {error: "Errore durante la richiesta POST, nessuna sonda è stata passata"});
+            res.render('errore', { error: "Errore durante la richiesta POST, nessuna sonda è stata passata" });
         }
-    }catch(errors){
+    } catch (errors) {
         console.error(errors);
-        res.render('errore', {errors: "Errore durante la chiamata API Mars Photos"});
-    }  
+        res.render('errore', { errors: "Errore durante la chiamata API Mars Photos" });
+    }
 })
 
 
 /*************************************REST API **************************************/
 
 /////////////////post (create)
-app.post('/api/apod',async function(req,res){
-    try{
-        const date=req.body.date||(new Date).toISOString().slice(0,10);
-        const comment=req.body.comment;
-        const nasa_res=await axios.get("https://api.nasa.gov/planetary/apod?",{
+app.post('/api/apod', async function (req, res) {
+    try {
+        const date = req.body.date || (new Date).toISOString().slice(0, 10);
+        const comment = req.body.comment;
+        const nasa_res = await axios.get("https://api.nasa.gov/planetary/apod?", {
             params: {
                 api_key: nasa_api_key,
                 date: date
             }
         });
-        const nasa_data=nasa_res.data;
-        const new_item=new Item({
+        const nasa_data = nasa_res.data;
+        const new_item = new Item({
             title: nasa_data.title,
             media_type: nasa_data.media_type,
             url: nasa_data.url,
@@ -395,55 +450,54 @@ app.post('/api/apod',async function(req,res){
             copyright: nasa_data.copyright,
             comment: comment
         });
-        const result=await new_item.save();
-        console.log('oleeee');
+        const result = await new_item.save();
         res.send(result);
-    }catch(err){
+    } catch (err) {
         res.send(err);
     }
 });
 
 
-async function isValidAK(api_key){
-    const user=await User.find({
+async function isValidAK(api_key) {
+    const user = await User.find({
         api: api_key
     });
-    if(user.length<1)
-    return null;
+    if (user.length < 1)
+        return null;
     return user[0].username;
 }
 
 //******************INTERFACCIA REST*********************/
 
 //***********GET******************/
-app.get('/api/resources',async function(req,res){
-    try{
-        const api_key=req.query.api_key;
-        const username=await isValidAK(api_key);
-        if(username){
-            const id=req.query.id||req.body.id;
+app.get('/api/resources', async function (req, res) {
+    try {
+        const api_key = req.query.api_key;
+        const username = await isValidAK(api_key);
+        if (username) {
+            const id = req.query.id || req.body.id;
             let result;
-            let sorter={};
-            let selecter={};
-            if(req.query.sort){
-                sorter[req.query.sort]=1;
+            let sorter = {};
+            let selecter = {};
+            if (req.query.sort) {
+                sorter[req.query.sort] = 1;
             }
-            if(req.query.select){
-                let temp=req.query.select.split(',');
-                for(const i in temp){
-                    selecter[temp[i]]=1
+            if (req.query.select) {
+                let temp = req.query.select.split(',');
+                for (const i in temp) {
+                    selecter[temp[i]] = 1
                 }
             }
-            if(id){
-                result=await Item
+            if (id) {
+                result = await Item
                     .find({
                         username: username,
                         _id: id
                     })
                     .select(selecter);
-            }else{
-                
-                result=await Item
+            } else {
+
+                result = await Item
                     .find({
                         username: username
                     })
@@ -451,46 +505,46 @@ app.get('/api/resources',async function(req,res){
                     .sort(sorter)
                     .select(selecter);
             }
-            
+
             //console.log(result);
             res.send(result);
-        }else{
+        } else {
             res.status(400).send('API KEY assente o invalida');
         }
-    }catch(err){
-        res.status(400).send('Errore\n'+err);
+    } catch (err) {
+        res.status(400).send('Errore\n' + err);
     }
 });
 
 
-app.get('/api/resources/:id',async function(req,res){
-    try{
-        const api_key=req.query.api_key;
-        const username=await isValidAK(api_key);
-        if(username){
-            const id=req.params.id||req.query.id||req.body.id;
+app.get('/api/resources/:id', async function (req, res) {
+    try {
+        const api_key = req.query.api_key;
+        const username = await isValidAK(api_key);
+        if (username) {
+            const id = req.params.id || req.query.id || req.body.id;
             let result;
-            let sorter={};
-            let selecter={};
-            if(req.query.sort){
-                sorter[req.query.sort]=1;
+            let sorter = {};
+            let selecter = {};
+            if (req.query.sort) {
+                sorter[req.query.sort] = 1;
             }
-            if(req.query.select){
-                let temp=req.query.select.split(',');
-                for(const i in temp){
-                    selecter[temp[i]]=1
+            if (req.query.select) {
+                let temp = req.query.select.split(',');
+                for (const i in temp) {
+                    selecter[temp[i]] = 1
                 }
             }
-            if(id){
-                result=await Item
+            if (id) {
+                result = await Item
                     .findById(id)
                     .find({
                         username: username
                     })
                     .select(selecter);
-            }else{
-                
-                result=await Item
+            } else {
+
+                result = await Item
                     .find({
                         username: username
                     })
@@ -498,36 +552,36 @@ app.get('/api/resources/:id',async function(req,res){
                     .sort(sorter)
                     .select(selecter);
             }
-            
+
             //console.log(result);
             res.send(result);
-        }else{
+        } else {
             res.status(400).send('API KEY assente o invalida');
         }
-    }catch(err){
-        res.status(400).send('Errore\n'+err);
+    } catch (err) {
+        res.status(400).send('Errore\n' + err);
     }
 });
 
 
 //***************POST**********************/
-app.post('/api/resources/apod',async function(req,res){
-    const api_key=req.query.api_key||req.body.api_key;
-    const username=await isValidAK(api_key);
-    if(username){
-        try{
-            const date=req.body.date||(new Date).toISOString().slice(0,10);
-            const comment=req.body.comment;
-            const nasa_res=await axios.get("https://api.nasa.gov/planetary/apod?",{
+app.post('/api/resources/apod', async function (req, res) {
+    const api_key = req.query.api_key || req.body.api_key;
+    const username = await isValidAK(api_key);
+    if (username) {
+        try {
+            const date = req.body.date || (new Date).toISOString().slice(0, 10);
+            const comment = req.body.comment;
+            const nasa_res = await axios.get("https://api.nasa.gov/planetary/apod?", {
                 params: {
                     api_key: nasa_api_key,
                     date: date
                 }
             });
-            
-            const nasa_data=nasa_res.data;
+
+            const nasa_data = nasa_res.data;
             //console.log(nasa_data);
-            const new_item=new Item({
+            const new_item = new Item({
                 title: nasa_data.title,
                 media_type: nasa_data.media_type,
                 url: nasa_data.url,
@@ -538,15 +592,15 @@ app.post('/api/resources/apod',async function(req,res){
                 comment: comment,
                 username: username
             });
-            const result=await new_item.save();
+            const result = await new_item.save();
             //console.log('oleeee');
             res.send(result);
-            
-        }catch(err){
+
+        } catch (err) {
             //console.log(err);
             res.status(400).send('qualcosa è andato storto durante la procedura');
         }
-    }else{
+    } else {
         res.status(400).send('API KEY assente o invalida');
     }
 });
@@ -554,170 +608,170 @@ app.post('/api/resources/apod',async function(req,res){
 
 
 //*********************PUT***************************/
-app.put('/api/resources',async function(req,res){
-    const api_key=req.query.api_key||req.body.api_key;
-    const username=await isValidAK(api_key);
-    if(username){
+app.put('/api/resources', async function (req, res) {
+    const api_key = req.query.api_key || req.body.api_key;
+    const username = await isValidAK(api_key);
+    if (username) {
 
-        const result=await Item.updateOne({
+        const result = await Item.updateOne({
             _id: req.body.id,
             username: username
-        },{
+        }, {
             comment: req.body.comment
         });
         res.send(result);
-    }else{
+    } else {
         res.status(400).send('API KEY assente o invaida');
     }
 });
 
 
- app.put('/api/resources/one',async function(req,res){
-    const api_key=req.query.api_key||req.body.api_key;
-    const username=await isValidAK(api_key);
-    if(username){
-        const new_comment=req.body.new_comment;
-        let filter=req.body;
-        filter['new_comment']=undefined;
-        filter['username']=username;
-        filter['comment']=filter['old_comment'];
-        filter['old_comment']=undefined;
+app.put('/api/resources/one', async function (req, res) {
+    const api_key = req.query.api_key || req.body.api_key;
+    const username = await isValidAK(api_key);
+    if (username) {
+        const new_comment = req.body.new_comment;
+        let filter = req.body;
+        filter['new_comment'] = undefined;
+        filter['username'] = username;
+        filter['comment'] = filter['old_comment'];
+        filter['old_comment'] = undefined;
 
-        const result=await Item.updateOne(filter,{
+        const result = await Item.updateOne(filter, {
             comment: new_comment
         });
         res.send(result);
-    }else{
+    } else {
         res.status(400).send('API KEY assente o invaida');
     }
 });
 
 
- app.put('/api/resources/many',async function(req,res){
-    const api_key=req.query.api_key||req.body.api_key;
-    const username=await isValidAK(api_key);
-    if(username){
-        const new_comment=req.body.new_comment;
-        let filter=req.body;
-        filter['new_comment']=undefined;
-        filter['username']=username;
-        filter['comment']=filter['old_comment'];
-        filter['old_comment']=undefined;
+app.put('/api/resources/many', async function (req, res) {
+    const api_key = req.query.api_key || req.body.api_key;
+    const username = await isValidAK(api_key);
+    if (username) {
+        const new_comment = req.body.new_comment;
+        let filter = req.body;
+        filter['new_comment'] = undefined;
+        filter['username'] = username;
+        filter['comment'] = filter['old_comment'];
+        filter['old_comment'] = undefined;
 
-        const result=await Item.updateMany(filter,{
+        const result = await Item.updateMany(filter, {
             comment: new_comment
         });
         res.send(result);
-    }else{
+    } else {
         res.status(400).send('API KEY assente o invaida');
     }
 });
 
 //*********************DELETE***************************/
-app.delete('/api/resources', async function(req,res){
-    const api_key=req.query.api_key||req.body.api_key;
-    const username=await isValidAK(api_key);
-    if(username){
-        if(req.body.id){
-            const result= await Item.deleteOne({
+app.delete('/api/resources', async function (req, res) {
+    const api_key = req.query.api_key || req.body.api_key;
+    const username = await isValidAK(api_key);
+    if (username) {
+        if (req.body.id) {
+            const result = await Item.deleteOne({
                 _id: req.body.id,
                 username: username
             });
             res.send(result);
-        }else{
+        } else {
             res.status(400).send('Id assente');
         }
-    }else{
+    } else {
         res.status(400).send('API KEY assente o invalido');
     }
 });
 
 
- app.delete('/api/resources/one', async function(req,res){
-    const api_key=req.query.api_key||req.body.api_key;
-    const username=await isValidAK(api_key);
-    if(username){
-        let filter=req.body;
-        filter['username']=username;
+app.delete('/api/resources/one', async function (req, res) {
+    const api_key = req.query.api_key || req.body.api_key;
+    const username = await isValidAK(api_key);
+    if (username) {
+        let filter = req.body;
+        filter['username'] = username;
         //console.log(filter);
-        const result=await Item.deleteOne(filter);
+        const result = await Item.deleteOne(filter);
         res.send(result);
-    }else{
+    } else {
         res.status(400).send('API KEY assente o invalido');
     }
 });
 
 
- app.delete('/api/resources/many', async function(req,res){
-    const api_key=req.query.api_key||req.body.api_key;
-    const username=await isValidAK(api_key);
-    if(username){
-        let filter=req.body;
-        filter['username']=username;
+app.delete('/api/resources/many', async function (req, res) {
+    const api_key = req.query.api_key || req.body.api_key;
+    const username = await isValidAK(api_key);
+    if (username) {
+        let filter = req.body;
+        filter['username'] = username;
         //console.log(filter);
-        const result=await Item.deleteMany(filter);
+        const result = await Item.deleteMany(filter);
         res.send(result);
-    }else{
+    } else {
         res.status(400).send('API KEY assente o invalido');
     }
 });
 
 
-app.get('/api/bodies', async function(req,res){
+app.get('/api/bodies', async function (req, res) {
     const response = await bodies();
     console.log(response);
-    if(!response.error){
+    if (!response.error) {
         res.send(response.response);
     }
-    else{
+    else {
         res.status(400).send('Errore chiamata');
     }
 });
 
-app.get('/api/bodies/position_body', async function(req,res){
-    const citta=req.query.city;
+app.get('/api/bodies/position_body', async function (req, res) {
+    const citta = req.query.city;
     const corpo = req.query.corpo;
     const data = req.query.data;
     const ora = req.query.ora;
 
-    if(citta && corpo){
+    if (citta && corpo) {
         const posizione = await geoCoding(citta);
-        if(!posizione.error){
+        if (!posizione.error) {
             const response = await positionBody(posizione.response.properties["lat"], posizione.response.properties["lat"], corpo, data, ora);
-            if(!response.error){
+            if (!response.error) {
                 res.send(response.response['data']['table']['rows'][0]["cells"][0]);
             }
-            else{
+            else {
                 "message" in response.response ? res.status(400).send(response.response["message"]) : res.status(400).send('Errore chiamata');
             }
         }
-        else{
+        else {
             res.status(400).send('Errore chiamata, città non valida');
         }
     }
-    else{
+    else {
         res.status(400).send('Parametri mancanti');
     }
 });
 
-app.post('/api/bodies/moon_phase', async function(req,res){
+app.post('/api/bodies/moon_phase', async function (req, res) {
     const citta = req.body.city;
     const data = req.body.data;
-    if(citta){
+    if (citta) {
         const posizione = await geoCoding(citta);
-        if(!posizione.error){
+        if (!posizione.error) {
             const response = await moon(posizione.response.properties["lat"], posizione.response.properties["lat"], data);
-            if(!response.error){
+            if (!response.error) {
                 res.send(response.response);
             }
-            else{
+            else {
                 res.status(400).send('Errore chiamata');
             }
         }
-        else{
+        else {
             res.status(400).send('Errore chiamata, città non valida');
         }
-    }else{
+    } else {
         res.status(400).send('Parametri mancanti');
     }
 })
@@ -726,17 +780,17 @@ app.post('/api/bodies/moon_phase', async function(req,res){
 
 /************************Server inizialization************************/
 
-mongoose.connect(database_url,{
-        useCreateIndex: true,
-        useNewUrlParser: true,
-        useUnifiedTopology: true
-    })
-        .then(function(){
-            console.log('Connected to database');
-            app.listen(port,function(){
-                console.log('listening on port '+port);
-            });
-        })
-        .catch(function(err){
-            console.error('Error...',err);
+mongoose.connect(database_url, {
+    useCreateIndex: true,
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+})
+    .then(function () {
+        console.log('Connected to database');
+        app.listen(port, function () {
+            console.log('listening on port ' + port);
         });
+    })
+    .catch(function (err) {
+        console.error('Error...', err);
+    });

@@ -47,7 +47,12 @@ function init(){
     };
 
     ws.onmessage=function(msg){
-        alert('[WS] Ricevuto: '+msg.data);
+        mess = JSON.parse(msg.data);
+        console.log(mess);
+        if(mess["status"] == "ok"){
+            isFavourite = true;
+        }
+        alert('[WS] Ricevuto: '+mess["text"]);
     }
 }
 
@@ -59,8 +64,13 @@ function save_apod(){
         api_key: api_key
     }
 
-    if(date!=""){
-        msg['date']=date;
+    if(isFavourite==true){
+        alert("Risorsa già presente tra i preferiti");
     }
-    ws.send(JSON.stringify(msg));
+    else{
+        if(date!=""){
+            msg['date']=date;
+        }
+        ws.send(JSON.stringify(msg));
+    }
 }

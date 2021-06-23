@@ -15,7 +15,12 @@ function init(){
     };
 
     ws.onmessage=function(msg){
-        alert('[WS] Ricevuto: '+msg.data);
+        mess = JSON.parse(msg.data);
+        console.log(mess);
+        if(mess["status"] == "ok"){
+            isFavourite = true;
+        }
+        alert('[WS] Ricevuto: '+mess["text"]);
     }
 }
 
@@ -28,7 +33,13 @@ function save_img(){
         api_key: api_key,
         rover: sonda
     }
-    ws.send(JSON.stringify(msg));
+
+    if(isFavourite==true){
+        alert("Risorsa già presente tra i preferiti");
+    }
+    else{
+        ws.send(JSON.stringify(msg));
+    }
 }
 
 function no_saveDB() {
