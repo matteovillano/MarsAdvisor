@@ -1,113 +1,105 @@
 //modules import
-const express = require("express");
-const mongoose = require("mongoose");
-const axios = require("axios");
-const dotenv = require("dotenv");
-const swaggerUi = require("swagger-ui-express");
-const swaggerJsDoc = require("swagger-jsdoc");
-const websocket = require("ws");
-var path = require("path");
-var request = require("request");
-const cookieParser = require("cookie-parser");
+const express=require('express');
+const mongoose=require('mongoose');
+const axios=require('axios');
+const dotenv=require('dotenv');
+const swaggerUi=require('swagger-ui-express');
+const swaggerJsDoc=require('swagger-jsdoc');
+const websocket=require('ws');
+var path = require('path');
+var request = require('request');
+const cookieParser = require('cookie-parser');
 
-const {
-  geoCoding,
-  starChart,
-  positionBody,
-  positions,
-  bodies,
-  moon,
-} = require("./static/js/rest_calls");
-const {
-  callNasaImageAPI,
-  callMarsAPIs,
-  getBinary,
-  uploadImage,
-} = require("./functions/api-calls");
-const { requireAuth, checkUser } = require("./middleware/authMiddleware");
+const { geoCoding, starChart, positionBody , positions, bodies, moon} = require("./static/js/rest_calls");
+const { callNasaImageAPI, callMarsAPIs, getBinary , uploadImage} = require("./functions/api-calls");
+const { requireAuth, checkUser } = require('./middleware/authMiddleware');
 const User = require("./models/User");
 const { isUser } = require("./utils/isUser");
 
+
 //operazioni di configurazione dei moduli
-const app = express();
+const app=express();
 dotenv.config();
 
 //variabili globali
-let access_token = "";
-let binary_media = "";
-const database_url = process.env.DATABASE_URL;
-const port = 8005;
-const ws_port = 8006;
-const nasa_api_key = process.env.NASA_API_KEY;
+let access_token = '';
+let binary_media = '';
+const database_url=process.env.DATABASE_URL;
+const port=8005;
+const ws_port=8006;
+const nasa_api_key=process.env.NASA_API_KEY;
 const client_id = process.env.OAUTH_CLIENT;
 const secret = process.env.OAUTH_SECRET;
 const redirect_uri = process.env.REDIRECT_URL;
 
 //setto ejs
-app.use(express.static(__dirname + "/static"));
-app.set("view engine", "ejs");
+app.use(express.static(__dirname + '/static'));
+app.set('view engine', 'ejs');
 
 // previene il caching di tutti gli utenti non loggati una volta che viene cambiata la pagina(si ricorda comunque dell'utente se rimane loggato), questo per evitare il problema del back button del browser dopo il logout (facendo back button dopo il logout rimaneva in cache la pagina dello user)
-app.use(function (req, res, next) {
-  if (!req.user)
-    res.header("Cache-Control", "private, no-cache, no-store, must-revalidate");
-  next();
-});
+app.use(function(req, res, next) {
+    if (!req.user)
+        res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+    next();
+  });
+
+
+
 
 //these two methods are for read HTTP requests body
-app.use(
-  express.urlencoded({
-    extended: true,
-  })
-);
+app.use(express.urlencoded({
+    extended: true
+}));
 app.use(express.json());
 
+
 //*******************SWAGGER **************/
-const swaggerOptions = {
-  swaggerDefinition: {
-    info: {
-      title: "MarsAdvisor API Documentation",
-      description:
-        "Questa è la documentazione delle API REST offerte dal servizio MarsAdvisor.\n" +
-        "Queste API consentono di salvare su un database file multimediali della NASA che vengono ritenuti interessanti aggiungendo un commento.\n" +
-        "Un secondo tipo di servizi consente invece di accedere ad informazioni riguardanti i corpi celesti del Sistema Solare.\n" +
-        "Per fornire una risposta il più accurata possibile queste API si avvalgono a loro volta di altri servizi REST, in particolare\n" +
-        "degli endpoint AstronomyApi ( per i dati astronomici ) e Geoapify ( per la localizzazione della posizione dell' utente.\n" +
-        "Le API sono accedibili come qualsiasi sevizio REST tramite HTTP\n" +
-        "E' possibile testare le API direttamente da questa pagina web ",
-      contact: {
-        name: "Matteo Villano",
-      },
-      servers: ["http://localhost:8005"],
+const swaggerOptions={
+    swaggerDefinition: {
+        info:{
+            title: 'MarsAdvisor API Documentation',
+            description: 'Questa è la documentazione delle API REST offerte dal servizio MarsAdvisor.\n'+
+            'Queste API consentono di salvare su un database file multimediali della NASA che vengono ritenuti interessanti aggiungendo un commento.\n'+
+            'Un secondo tipo di servizi consente invece di accedere ad informazioni riguardanti i corpi celesti del Sistema Solare.\n'+
+            'Per fornire una risposta il più accurata possibile queste API si avvalgono a loro volta di altri servizi REST, in particolare\n'+
+            'degli endpoint AstronomyApi ( per i dati astronomici ) e Geoapify ( per la localizzazione della posizione dell\' utente.\n' +
+            'Le API sono accedibili come qualsiasi sevizio REST tramite HTTP\n'+
+            'E\' possibile testare le API direttamente da questa pagina web ',
+            contact: {
+                name: 'Matteo Villano',
+            },
+            servers: ['http://localhost:8005'],
+        }
     },
-  },
-  apis: ["docs.js"],
-};
+    apis: ['docs.js']
+}
 
-const swaggerDocs = swaggerJsDoc(swaggerOptions);
+const swaggerDocs=swaggerJsDoc(swaggerOptions);
 
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+app.use('/api-docs',swaggerUi.serve,swaggerUi.setup(swaggerDocs));
+
+
 
 /************************************MONGODB******************************/
 
 //schema
-const itemSchema = new mongoose.Schema({
-  title: String,
-  media_type: String,
-  url: String,
-  hdurl: String,
-  explanation: String,
-  date: String,
-  copyright: String,
-  comment: String,
-  username: {
-    type: String,
-    required: true,
-  },
+const itemSchema=new mongoose.Schema({
+    title: String,
+    media_type: String,
+    url: String,
+    hdurl: String,
+    explanation: String,
+    date: String,
+    copyright: String,
+    comment: String,
+    username: {
+        type: String,
+        required: true
+    }
 });
 
 //model
-const Item = mongoose.model("Item", itemSchema);
+const Item = mongoose.model('Item', itemSchema);
 
 /****************************WEBSOCKET**********************************/
 //inizializzo la websocket
@@ -203,16 +195,22 @@ wss.on('connection', function (ws) {
 
 
         } else {
-            ws.send(JSON.stringify({"text":"Comando sconosciuto", "status":"ko"}));
+            ws.send('Comando sconosciuto');
         }
-  });
+
+    });
+
 });
 
-const authRoutes = require("./routes/authRoutes"); // carica e rende globali nell'app le route di authRoutes così che possa essere utilizzato
+
+
+
+const authRoutes = require('./routes/authRoutes');  // carica e rende globali nell'app le route di authRoutes così che possa essere utilizzato
 app.use(authRoutes);
 
 /**********************************COOKIES**********************************/
 app.use(cookieParser());
+
 
 /////////////////////////////////////////////////////////////////////////////
 app.use('*', checkUser);  //utilizza su tutte le location il middleware checkUser per verificare se c'è un token dell'user ed è verificato, così da poter vedere i suoi dati dinamicamente (se ce ne sono)
@@ -316,46 +314,42 @@ app.post('/google_oauth', function (req, res) {  //authorization request.
             'state': 'rdc_project',
             'prompt': "select_account consent"
         });
-    } else {
-      res.render("errore", {
-        error: "Errore durante la richiesta POST, nessuna data è stata passata",
-      }); // gestire errore
+        res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${google_params}`);
     }
-});
+})
 
-app.post("/google_oauth", async function (req, res) { //authorization request.
-    if (req.body.url_img) {
-        url_to_save = req.body.url_img;
-        const google_params = new URLSearchParams({
-        client_id: client_id,
-        redirect_uri: redirect_uri,
-        response_type: "code",
-        scope: "https://www.googleapis.com/auth/photoslibrary.appendonly", //solo salvataggio, niente lettura
-        access_type: "online",
-        state: "rdc_project",
-        prompt: "select_account consent",
-        });
-        if (code) {
-            try {
-                const google_response = await axios.post('https://oauth2.googleapis.com/token', upload_params);
-                if (google_response.status == 200) {
-                    access_token = google_response.data.access_token;  //salvo token per accedere al servizio
-                    const upload = await uploadImage(url_to_save, access_token);  //funzione che salva l'immagine su google photo dandogli l'immagine e un token di accesso di google oauth
-                    console.log(upload.status);
-                    if(upload.status == "ok"){
-                        res.redirect('/?status=ok'); 
-                    }
-                    else{
-                        res.redirect('/?status=ko'); 
-                    }
+app.get('/save_image', async function (req, res) { //procedura di invio authorization code
+    const code = req.query.code;
+    const upload_params = new URLSearchParams({
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        'client_id': client_id,
+        'client_secret': secret,
+        'code': code,
+        'redirect_uri': redirect_uri,
+        'grant_type': 'authorization_code'
+    });
+    if (code) {
+        try {
+            const google_response = await axios.post('https://oauth2.googleapis.com/token', upload_params);
+            if (google_response.status == 200) {
+                access_token = google_response.data.access_token;  //salvo token per accedere al servizio
+                const upload = await uploadImage(url_to_save, access_token);  //funzione che salva l'immagine su google photo dandogli l'immagine e un token di accesso di google oauth
+                console.log(upload.status);
+                if(upload.status == "ok"){
+                    res.redirect('/?status=ok'); 
                 }
-                else {
-                    res.render('errore', { error: "Errore durante la procedura oAuth" }); // gestire errore
+                else{
+                    res.redirect('/?status=ko'); 
                 }
-            } catch (error) {
-                console.log(error);
-                res.send('errore google_response');
             }
+            else {
+                res.render('errore', { error: "Errore durante la procedura oAuth" }); // gestire errore
+            }
+        } catch (error) {
+            console.log(error);
+            res.send('errore google_response');
         }
     }
 })
@@ -431,6 +425,9 @@ app.post('/mars', async function (req, res) {
     }
 })
 
+
+/*************************************REST API **************************************/
+
 /////////////////post (create)
 app.post('/api/apod', async function (req, res) {
     try {
@@ -455,15 +452,11 @@ app.post('/api/apod', async function (req, res) {
         });
         const result = await new_item.save();
         res.send(result);
-    } catch (errors) {
-    console.error(errors);
-    res.render("errore", {
-      errors: "Errore durante la chiamata API Mars Photos",
-    });
-  }
+    } catch (err) {
+        res.send(err);
+    }
 });
 
-/*************************************REST API **************************************/
 
 async function isValidAK(api_key) {
     const user = await User.find({
@@ -570,6 +563,7 @@ app.get('/api/resources/:id', async function (req, res) {
     }
 });
 
+
 //***************POST**********************/
 app.post('/api/resources/apod', async function (req, res) {
     const api_key = req.query.api_key || req.body.api_key;
@@ -610,6 +604,8 @@ app.post('/api/resources/apod', async function (req, res) {
         res.status(400).send('API KEY assente o invalida');
     }
 });
+
+
 
 //*********************PUT***************************/
 app.put('/api/resources', async function (req, res) {
@@ -778,7 +774,9 @@ app.post('/api/bodies/moon_phase', async function (req, res) {
     } else {
         res.status(400).send('Parametri mancanti');
     }
-});
+})
+
+
 
 /************************Server inizialization************************/
 
@@ -786,7 +784,8 @@ mongoose.connect(database_url, {
     useCreateIndex: true,
     useNewUrlParser: true,
     useUnifiedTopology: true
-}).then(function () {
+})
+    .then(function () {
         console.log('Connected to database');
         app.listen(port, function () {
             console.log('listening on port ' + port);
@@ -794,5 +793,4 @@ mongoose.connect(database_url, {
     })
     .catch(function (err) {
         console.error('Error...', err);
-    }
-);
+    });
