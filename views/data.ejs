@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Data</title>
+    <script src="https://kit.fontawesome.com/852b2543a2.js" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
+    <!-- JavaScript Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4" crossorigin="anonymous"></script>
+    <link href="/css/style.css" rel="stylesheet" type="text/css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="./js/data.js" type="text/javascript"></script>
+    
+    <style>
+        .bodies , .bodies option{
+            text-transform: capitalize;
+        }
+        .card.info{
+            height: 190px;
+        }
+    </style>
+</head>
+  <body>
+
+    <!-- Navbar Bootstrap-->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+        <div class="navbar-nav">
+          <a class="nav-item nav-link" href="/">Home</span></a>
+          <a class="nav-item nav-link" href="/mars">Marte</a>
+          <a class="nav-item nav-link active" href="/data">Dati Astronomici</span></a>
+          <% if (locals.user) { %>
+          <a class="nav-item nav-link" href="/user"><%- locals.user.username -%></a>
+          <a class="nav-item nav-link" href="/logout">Logout</a>
+          <% } else { %>
+          <a class="nav-item nav-link" href="/login">Login</a>
+          <a class="nav-item nav-link" href="/signup">Sign Up</a>
+          <% } %>
+          <a class="nav-item nav-link" href="/api-docs">Api Docs</a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid" >
+        <div class="col-12" style="display: flex; flex-direction: column;">
+            <h1 style="margin: 0 auto;">Mars Advisor</h1>
+            <h3 style="margin: 0 auto;">Dati Astronomici</h3>
+        </div>
+
+        <div class="col-12 pt-5">
+            <div class="col-12 row">
+                <h2>Ottieni Dati Astronomici In Base Alla Tua Posizione</h2>
+                <h3>Inserisci Il Nome di una città o Utilizza un Servizio Di Geolocalizzazione Del Tuo IP</h3>
+                <div class="row mt-3">
+                    <div class="col-6   ">
+                        <div class="input-group flex-nowrap ">
+                            <label style="align-self: center; margin-right: 3px;">La Tua Posizione </label>
+                            <input type="text" class="form-control" placeholder="Città" aria-label="Città" id="citta">
+                            <!-- <button type="submit" class="btn btn-primary" id="send-citta">Invia</button> -->
+                        </div>
+                    </div>
+                    <div class="col-6 ">
+                        <button type="submit" class="btn btn-primary" style="float: right;" onclick="geoAPI();"><i class="fas fa-search-location"></i>Ottieni Posizione</button>
+                    </div>
+                </div>
+            </div>
+            <div class="row col-12 mt-3">
+                <div class="col-sm-6" >
+                  <div class="card info">
+                    <div class="card-body">
+                      <h5 class="card-title">Calcola sorgere e tramonto di Sole e Luna rispetto alla tua posizione</h5>
+                      <a href="#" class="btn btn-primary" onclick="dataApi();" style="margin-top: 46px;">Calcola</a>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-sm-6" >
+                    <div class="card info">
+                      <div class="card-body">
+                        <h5 class="card-title">Calcola la posizione di un corpo celeste in base alle tue coordinate</h5>
+                        <select class="form-select mb-2 bodies" aria-label="Default select example" id="bodies">
+                          <option selected value="">Corpo Celeste</option>
+                        </select>
+                        <a href="#" class="btn btn-primary" onclick="position();">Calcola</a>
+                      </div>
+                    </div>
+                  </div>                
+              </div>
+            <div class="row col-12">
+                <div class="col-8 mt-5" style="margin: 0 auto;">
+                    <div class="card" style="display: none ;" id="result1">
+                        <div class="card-header" id="date">
+                          Risultato
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped" id="astronomyIp">
+                                <tbody>
+                                  <tr>
+                                    <td>Altezza Luna</td>
+                                    <td id="alt_luna"> - </td>
+                                  </tr>
+                                  <tr>
+                                    <td>Azimut Luna</td>
+                                    <td id="az_luna"> - </td>
+                                  </tr>
+                                  <tr>
+                                    <td>Distanza Luna</td>
+                                    <td id="dist_luna"> - </td>
+                                  </tr>
+                                  <tr>
+                                    <td>Altezza Sole</td>
+                                    <td id="alt_sole"> - </td>
+                                  </tr>
+                                  <tr>
+                                    <td>Azimut Sole</td>
+                                    <td id="az_sole"> - </td>
+                                  </tr>
+                                  <tr>
+                                    <td>Distanza Sole</td>
+                                    <td id="dist_sole"> - </td>
+                                  </tr>  
+                                  <tr>
+                                    <td>Mezzogiorno Solare</td>
+                                    <td id="noon"> - </td>
+                                  </tr>
+                                  <tr>
+                                    <td>Alba</td>
+                                    <td id="sunrise"> - </td>
+                                  </tr>
+                                  <tr>
+                                    <td>Tramonto</td>
+                                    <td id="sunset"> - </td>
+                                  </tr>  
+                                </tbody>
+                              </table>
+                          <div class="spinner-border text-primary" role="status" style="margin: 0 auto;display: block;" id="loader1">
+                            <span class="visually-hidden">Loading...</span>
+                          </div>
+                          <button type="button" class="btn btn-danger mt-2" style="margin: 0 auto;display: block;" id="iperror">Errore</button>
+                        </div>
+                    </div>
+
+                    <div class="card" style="display: none ;" id="result2">
+                        <div class="card-header" id="date2">
+                          Risultato
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped" id="positions">
+                                <tbody>
+                                  <tr>
+                                    <td>Distanza</td>
+                                    <td id="distanza"> 
+                                        <ul class="list-group">
+                                            <li class="list-group-item" id="km"> - </li>
+                                            <li class="list-group-item" id="au"> - </li>
+                                      </ul>
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td>Elongazione</td>
+                                    <td id="elongazione"> - </td>
+                                  </tr>
+                                  <tr>
+                                    <td>Magnitudine</td>
+                                    <td id="magnitudine"> - </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                          <div class="spinner-border text-primary" role="status" style="margin: 0 auto;display: block;" id="loader2">
+                            <span class="visually-hidden">Loading...</span>
+                          </div>
+                          <button type="button" class="btn btn-danger mt-2" style="margin: 0 auto;display: block;" id="positionerror">Errore</button>
+                        </div>
+                    </div>                    
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

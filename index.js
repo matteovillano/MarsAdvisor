@@ -529,6 +529,9 @@ app.post("/mars", async function (req, res) {
   }
 });
 
+app.get("/data", async function (req, res) {
+  res.render("data");
+});
 /*************************************REST API **************************************/
 
 /////////////////post (create)
