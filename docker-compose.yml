@@ -1,0 +1,29 @@
+version: '3.4'
+
+services:
+  marsadvisor:
+    image: marsadvisor
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      NODE_ENV: production
+    ports:
+      - 8005:8005
+      - 8006:8006
+    volumes:
+      - .:/usr/src/app
+    links:
+      - mongo
+  mongo:
+    image: mongo:latest
+    ports:
+      - 27017:27017
+    volumes:
+      - data:/data/db
+volumes:
+  data:
+networks:
+  default:
+    external: true
+    name: mars-net
