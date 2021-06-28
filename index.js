@@ -8,6 +8,7 @@ const swaggerJsDoc = require("swagger-jsdoc");
 const websocket = require("ws");
 var path = require("path");
 var request = require("request");
+const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 
 const {
@@ -283,6 +284,25 @@ app.get("/user/gallery", requireAuth, async (req, res) => {
     res.render("gallery", { data: results });
   } catch (e) {
     res.status(500).json({ message: e.message });
+  }
+});
+
+app.delete("/user/gallery", requireAuth, async (req, res) => {
+  const token = req.cookies.jwt;
+  const id = req.body.id;
+  if (token) {
+    jwt.verify(token, process.env.JWT_SECRET, async (err, decodedToken) => {
+      if (err) {
+        res.json({ error: "token non valido" });
+      } else {
+        console.log(id);
+        console.log("Fin qui bene");
+        await Item.deleteOne({ _id: id });
+        res.json({ status: "ok" });
+      }
+    });
+  } else {
+    res.json({ error: "User non loggato" });
   }
 });
 
