@@ -1,4 +1,4 @@
-version: '3.4'
+version: "3.4"
 
 services:
   marsadvisor:
@@ -9,16 +9,28 @@ services:
     ports:
       - 8005:8005
       - 8006:8006
+    depends_on:
+      - redis
     volumes:
       - .:/usr/src/app
     links:
       - mongo
+      - redis
+    environment:
+      - REDIS_URL=redis://cache
   mongo:
     image: mongo:latest
     ports:
       - 27017:27017
     volumes:
       - data:/data/db
+  redis:
+    container_name: cache
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - /data:/data/cache
 volumes:
   data:
 networks:

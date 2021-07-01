@@ -250,7 +250,10 @@ app.use(authRoutes);
 app.use(cookieParser());
 
 /////////////////////////////////////////////////////////////////////////////
-app.use("*", checkUser); //utilizza su tutte le location il middleware checkUser per verificare se c'è un token dell'user ed è verificato, così da poter vedere i suoi dati dinamicamente (se ce ne sono)
+app.use("*", checkUser, (req, res, next) => {
+  next();
+}); //utilizza su tutte le location il middleware checkUser per verificare se c'è un token dell'user ed è verificato, così da poter vedere i suoi dati dinamicamente (se ce ne sono)
+
 app.get("/user", requireAuth, (req, res) => res.render("user")); //pagina dell'utente loggato (eseguie prima la funzione middleware requireAuth per verificare se l'utente è loggato)
 app.get("/user/gallery", requireAuth, async (req, res) => {
   console.log(res.locals.user.username);
@@ -259,7 +262,7 @@ app.get("/user/gallery", requireAuth, async (req, res) => {
   const limit = parseInt(req.query.limit);
   const startIndex = (page - 1) * limit;
   const endIndex = page * limit;
-  const item_counter = await Item.count({ username: username }).exec();
+  const item_counter = await Item.countDocuments({ username: username }).exec();
   const results = {
     limit: limit,
     page: page,
@@ -288,22 +291,13 @@ app.get("/user/gallery", requireAuth, async (req, res) => {
 });
 
 app.delete("/user/gallery", requireAuth, async (req, res) => {
-  const token = req.cookies.jwt;
   const id = req.body.id;
-  if (token) {
-    jwt.verify(token, process.env.JWT_SECRET, async (err, decodedToken) => {
-      if (err) {
-        res.json({ error: "token non valido" });
-      } else {
-        console.log(id);
-        console.log("Fin qui bene");
-        await Item.deleteOne({ _id: id });
-        res.json({ status: "ok" });
-      }
-    });
-  } else {
-    res.json({ error: "User non loggato" });
+  try {
+    await Item.deleteOne({ _id: id });
+  } catch (e) {
+    res.status(404).json({ message: e.message });
   }
+  res.json({ status: "ok" });
 });
 
 app.get("/", async function (req, res) {

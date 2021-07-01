@@ -12,7 +12,7 @@ router.use(
 
 router.use(cookieParser());
 
-const { requireNoAuth, checkUser } = require("../middleware/authMiddleware"); //carica la funzione che cerca di non far entrare nella pagina di login/register se l'utente è già loggato
+const { requireNoAuth } = require("../middleware/authMiddleware"); //carica la funzione che cerca di non far entrare nella pagina di login/register se l'utente è già loggato
 
 router.get("/signup", requireNoAuth, authController.signup_get);
 router.post("/signup", requireNoAuth, authController.signup_post);
@@ -41,10 +41,10 @@ router.patch(
   authController.reset_password_patch
 );
 
-router.patch(
+/*router.patch(
   "/updatePassword",
   checkUser,
   authController.update_password_patch //ancora da implementare
-);
+);*/
 
 module.exports = router;
