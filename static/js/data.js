@@ -1,4 +1,5 @@
 const api_key = "9ae8deefe98841fc87e193b2737e4988";
+const geoapify = "7c07bc9a38d640bfa233a8f8dc67a035";
 
 $( document ).ready(function() {
     $.ajax({
@@ -74,12 +75,12 @@ function dataApi(){
 }
 
 function geoAPI(){
-    const city_ip = $.ajax( "https://api.ipgeolocation.io/ipgeo?apiKey="+api_key )
+    const city_ip = $.ajax( "https://api.geoapify.com/v1/ipinfo?apiKey="+geoapify )
     .done(function() {
         console.log( "success" );
-        console.log(city_ip.responseJSON.city);
+        console.log(city_ip.responseJSON.city["name"]);
         
-        const location = city_ip.responseJSON.city;
+        const location = city_ip.responseJSON.city["name"];
         $("#citta").val(location);
     })
     .fail(function() {

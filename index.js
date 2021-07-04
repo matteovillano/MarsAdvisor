@@ -277,8 +277,6 @@ wss.on("connection", function (ws) {
             })
           );
         }
-
-
     }else {
       ws.send("Comando sconosciuto");
     }
@@ -880,10 +878,11 @@ app.get("/api/bodies/position_body", async function (req, res) {
 
   if (citta && corpo) {
     const posizione = await geoCoding(citta);
+    console.log("posizione", posizione);
     if (!posizione.error) {
       const response = await positionBody(
         posizione.response.properties["lat"],
-        posizione.response.properties["lat"],
+        posizione.response.properties["lon"],
         corpo,
         data,
         ora
@@ -911,7 +910,7 @@ app.post("/api/bodies/moon_phase", async function (req, res) {
     if (!posizione.error) {
       const response = await moon(
         posizione.response.properties["lat"],
-        posizione.response.properties["lat"],
+        posizione.response.properties["lon"],
         data
       );
       if (!response.error) {
