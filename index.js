@@ -237,7 +237,49 @@ wss.on("connection", function (ws) {
         );
         console.error(err);
       }
-    } else {
+    } else if(ws_cmd.cmd == "save_comment"){
+        const item_id = ws_cmd.id_item;
+        const comment = ws_cmd.comment;
+        let comment_id = ws_cmd.id_text;
+
+        try{
+          let myquery = { _id: item_id };
+          let newvalues = { $set: {comment: comment } };
+
+          const update = await Item.updateOne(myquery, newvalues, function(err,  res){
+            if(err){
+              console.error(err);
+              ws.send(
+                JSON.stringify({
+                  text: "Errore, qualcosa è andato storto... " + err,
+                  status: "ko",
+                })
+              );
+            }
+            else{
+              ws.send(
+                JSON.stringify({
+                  text: "Commento salvato correttamente",
+                  status: "ok",
+                  comment_id : comment_id,
+                  comment: comment
+                })
+              );
+            } 
+          });
+          console.log(update);
+        }catch(error){
+          console.error(error);
+          ws.send(
+            JSON.stringify({
+              text: "Errore, qualcosa è andato storto... " + err,
+              status: "ko",
+            })
+          );
+        }
+
+
+    }else {
       ws.send("Comando sconosciuto");
     }
   });

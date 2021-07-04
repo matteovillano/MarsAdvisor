@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Profilo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <!-- JavaScript Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4" crossorigin="anonymous"></script>
     <link href="/css/style.css" rel="stylesheet" type="text/css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="/js/gallery.js"></script>
     <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css" integrity="sha384-AYmEC3Yw5cVb3ZcuHtOA93w35dYTsvhLPVnYs9eStHfGJvOvKxVfELGroGkvsg+p" crossorigin="anonymous"/>
   </head>
 <body>
@@ -33,28 +36,57 @@
   
         <% if(data.items) {%>
           <div class="row grid">
-          <% data.items.forEach(element => { %>
-            <div class="grid-item col-sm-12 col-md-6 col-lg-4 mb-4">
-              <div class="card">
-                <% if(element.media_type=='video'){ %>
-                  <div style="display: flex;">
-                    <iframe class="yt"
-                      src="<%= element.url %>">
-                    </iframe>
-                  </div>
-                  <% } else { %>
-                    <img class="card-img-top" src="<%= element.url %>" alt="<%= element.title %>">
-                  <% } %>
-                  <div class="card-body grid-item-content">
-                    <h4 class="card-title"><%= element.title %></h4>
-                    <p class="card-text"><%= (new Date(element.date)).toLocaleDateString() %></p>
-                    <button id="<%= element._id %>" onClick="cancel(this)" type="button" class="btn" aria-label="Cancel" style="font-size: 23px; position:absolute;bottom: 10px;
-                      right: 10px;"><i class="far fa-trash-alt"></i></button>
+            <% data.items.forEach((element, index) => { %>
+              <div class="grid-item col-sm-12 col-md-6 col-lg-4 mb-4 mt-2">
+                <div class="card gallery">
+                  <% if(element.media_type=='video'){ %>
+                    <div style="display: flex;">
+                      <iframe class="yt"
+                        src="<%= element.url %>">
+                      </iframe>
+                    </div>
+                    <% } else { %>
+                      <img class="card-img-top" src="<%= element.url %>" alt="<%= element.title %>">
+                    <% } %>
+                    <div class="card-body grid-item-content">
+                      <h4 class="card-title"><%= element.title %></h4>
+                      <p class="card-text"><%= (new Date(element.date)).toLocaleDateString() %></p>
+                      <div class="mt-5">
+                        <button data-id-item="<%= element._id %>" onClick="cancel(this)" type="button" class="btn" aria-label="Cancel" style="font-size: 23px; position:absolute;bottom: 5px;
+                          right: 10px;">
+                          <i class="far fa-trash-alt"></i>
+                        </button>
+                      
+                        <button  type="button" class="btn" style="font-size: 23px;position:absolute;bottom: 5px;left: 10px;" data-bs-toggle="modal" data-bs-target="#m<%= index %>""><i class="far fa-comment"></i></button>
+                      </div>
+                    </div>
+                </div>
+              </div>
+              <!-- Modal -->
+              <div class="modal fade" id="m<%= index %>" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title" id="exampleModalLabel">Visualizza o modifica il commento</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                      <form>
+                        <div class="input-group">
+                          <span class="input-group-text">Commento</span>
+                          <textarea id="t<%= index %>" class="form-control" aria-label="With textarea"><%= element.comment %></textarea>
+                      </div>
+                      </form>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="reset(this)" data-id-msg="m<%= index %>">Annulla</button>
+                      <button type="button" class="btn btn-primary" onclick="save_comment(this)" data-id-item="<%= element._id %>" data-id-msg="m<%= index %>">Salva</button>
+                    </div>
                   </div>
                 </div>
               </div>
-          <% }); %>
-        </div>
+            <% }); %>
+          </div>
         <nav aria-label="Page navigation">
           <ul class="pagination justify-content-center">
             <li class="page-item <% if(!data.previous) {%> disabled <%}%>">
@@ -84,6 +116,7 @@
 <script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
 <script src="https://unpkg.com/imagesloaded@4.1.4/imagesloaded.pkgd.min.js"></script>
 <script type="text/javascript" language="javascript">
+  let key ="<%- locals.key -%>";
   $(function() {
       var $grid = $('.grid').imagesLoaded(function () {
           $grid.masonry({
@@ -95,7 +128,7 @@
 </script>
 <script>
   async function cancel(obj){
-      var id = obj.id;
+      var id = $( obj ).data( "id-item" ); 
       const result = await fetch("/user/gallery", {
           method: 'DELETE',
           headers: {

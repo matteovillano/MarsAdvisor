@@ -57,3 +57,13 @@ iframe.yt {
   display: flex;
   justify-content: center;
 }
+
+.card-img-top {
+  width: 100%;
+  height: 28vh;
+  object-fit: contain;
+}
+
+.card.gallery{
+  height: 50vh!important;
+}
