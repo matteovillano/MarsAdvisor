@@ -588,34 +588,6 @@ app.get("/data", async function (req, res) {
 });
 /*************************************REST API **************************************/
 
-/////////////////post (create)
-app.post("/api/apod", async function (req, res) {
-  try {
-    const date = req.body.date || new Date().toISOString().slice(0, 10);
-    const comment = req.body.comment;
-    const nasa_res = await axios.get("https://api.nasa.gov/planetary/apod?", {
-      params: {
-        api_key: nasa_api_key,
-        date: date,
-      },
-    });
-    const nasa_data = nasa_res.data;
-    const new_item = new Item({
-      title: nasa_data.title,
-      media_type: nasa_data.media_type,
-      url: nasa_data.url,
-      hdurl: nasa_data.hdurl,
-      explanation: nasa_data.explanation,
-      date: nasa_data.date,
-      copyright: nasa_data.copyright,
-      comment: comment,
-    });
-    const result = await new_item.save();
-    res.send(result);
-  } catch (err) {
-    res.send(err);
-  }
-});
 
 async function isValidAK(api_key) {
   const user = await User.find({
