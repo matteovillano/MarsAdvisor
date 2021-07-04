@@ -27,7 +27,6 @@ const {
 } = require("./functions/api-calls");
 const { requireAuth, checkUser } = require("./middleware/authMiddleware");
 const User = require("./models/User");
-const { isUser } = require("./utils/isUser");
 
 //operazioni di configurazione dei moduli
 const app = express();
@@ -354,13 +353,14 @@ app.get("/", async function (req, res) {
         url = data.url;
         is_video = true; // la risorsa è solo video
       }
-
-      const utente = await isUser(req.cookies.jwt);
+      console.log(req.res.locals.user);
+      const utente = req.res.locals.user;
+      console.log("utente", utente);
       let favourite = null;
-      if (utente.user != null) {
+      if (utente != "undefined" && utente != null) {
         favourite = await Item.findOne({
           $or: [{ url: data.thumbnail_url }, { url: data.url }],
-          username: utente.user.username,
+          username: utente.username,
         });
       }
 
@@ -413,12 +413,12 @@ app.post("/", async function (req, res) {
           is_video = true; // risorsa solo video
         }
 
-        const utente = await isUser(req.cookies.jwt);
+        const utente = req.res.locals.user;
         let favourite = null;
-        if (utente.user != null) {
+        if (utente != "undefined" && utente !=  null){
           favourite = await Item.findOne({
             $or: [{ url: data.thumbnail_url }, { url: data.url }],
-            username: utente.user.username,
+            username: utente.username,
           });
         }
 
@@ -513,12 +513,12 @@ app.get("/mars", async function (req, res) {
       let image;
       image = response.response;
 
-      const utente = await isUser(req.cookies.jwt);
+      const utente = req.res.locals.user;
       let favourite = null;
-      if (utente.user != null) {
+      if (utente != "undefined" && utente !=  null){
         favourite = await Item.findOne({
           url: image.img_src,
-          username: utente.user.username,
+          username: utente.username,
         });
       }
 
@@ -552,12 +552,12 @@ app.post("/mars", async function (req, res) {
         let image;
         image = response.response;
 
-        const utente = await isUser(req.cookies.jwt);
+        const utente = req.res.locals.user;
         let favourite = null;
-        if (utente.user != null) {
+        if (utente != "undefined" && utente !=  null){
           favourite = await Item.findOne({
             url: image.img_src,
-            username: utente.user.username,
+            username: utente.username,
           });
         }
 
