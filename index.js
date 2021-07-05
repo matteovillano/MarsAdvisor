@@ -500,6 +500,9 @@ app.get("/save_image", async function (req, res) {
       res.send("errore google_response");
     }
   }
+  else{
+    res.redirect("/?status=ko");
+  }
 });
 
 app.get("/mars", async function (req, res) {
